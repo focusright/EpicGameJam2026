@@ -33,6 +33,10 @@
 		{
 			"Name": "UnrealCanvasBridge",
 			"Enabled": true
+		},
+		{
+			"Name": "Kimodo",
+			"Enabled": true
 		}
 	]
 }
