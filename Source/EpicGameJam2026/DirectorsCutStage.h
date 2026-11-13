@@ -27,7 +27,7 @@ public:
 	static constexpr float ArenaDepth = 515.0f;
 	static constexpr float ArenaWidth = 880.0f;
 
-	void Build();
+	bool Build();
 	void ResetArena();
 	void SetArenaCamera(ACameraActor& Camera, float Time, bool bTitle) const;
 	void PoseDirector(FVector2D Position, FVector2D Facing, float Stride, float Slash, float Split);

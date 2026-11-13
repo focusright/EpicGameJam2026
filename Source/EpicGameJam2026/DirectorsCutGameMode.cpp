@@ -137,11 +137,11 @@ void ADirectorsCutGameMode::BeginPlay()
 	Super::BeginPlay();
 	Stage = GetWorld()->SpawnActor<ADirectorsCutStage>();
 	Camera = GetWorld()->SpawnActor<ACameraActor>();
-	if (!Stage || !Camera)
+	if (!Stage || !Camera || !Stage->Build())
 	{
+		SetActorTickEnabled(false);
 		return;
 	}
-	Stage->Build();
 	BuildSounds();
 	if (APlayerController* Controller = GetWorld()->GetFirstPlayerController())
 	{
@@ -188,6 +188,10 @@ void ADirectorsCutGameMode::StartTake()
 
 void ADirectorsCutGameMode::Confirm()
 {
+	if (!IsActorTickEnabled())
+	{
+		return;
+	}
 	switch (Phase)
 	{
 	case EPhase::Title:

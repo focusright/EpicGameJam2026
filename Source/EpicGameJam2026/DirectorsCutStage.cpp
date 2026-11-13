@@ -11,7 +11,6 @@
 #include "Engine/Texture2D.h"
 #include "EngineUtils.h"
 #include "Materials/MaterialInstanceDynamic.h"
-#include "UObject/ConstructorHelpers.h"
 
 using namespace DirectorsCut;
 
@@ -50,17 +49,6 @@ ADirectorsCutStage::ADirectorsCutStage()
 {
 	StageRoot = CreateDefaultSubobject<USceneComponent>(TEXT("StageRoot"));
 	SetRootComponent(StageRoot);
-	static ConstructorHelpers::FObjectFinder<UStaticMesh> Box(TEXT("/Engine/BasicShapes/Cube.Cube"));
-	static ConstructorHelpers::FObjectFinder<UStaticMesh> Ball(TEXT("/Engine/BasicShapes/Sphere.Sphere"));
-	static ConstructorHelpers::FObjectFinder<UStaticMesh> Cylinder(TEXT("/Engine/BasicShapes/Cylinder.Cylinder"));
-	static ConstructorHelpers::FObjectFinder<UStaticMesh> Cone(TEXT("/Engine/BasicShapes/Cone.Cone"));
-	static ConstructorHelpers::FObjectFinder<USkeletalMesh> Kaiju(TEXT("/Game/Godzilla/Meshes/Godzilla.Godzilla"));
-	static ConstructorHelpers::FObjectFinder<UMaterialInterface> Pigment(TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial"));
-	static ConstructorHelpers::FObjectFinder<UMaterialInterface> Light(TEXT("/Engine/EngineMaterials/EmissiveTexturedMaterial.EmissiveTexturedMaterial"));
-	Shapes = {Box.Object, Ball.Object, Cylinder.Object, Cone.Object};
-	GodzillaMesh = Kaiju.Object;
-	PigmentMaterial = Pigment.Object;
-	LightMaterial = Light.Object;
 }
 
 USceneComponent* ADirectorsCutStage::Group(USceneComponent* Parent, FVector Location)
@@ -143,8 +131,24 @@ void ADirectorsCutStage::PointLight(USceneComponent* Parent, FVector Location, F
 	Lamp->RegisterComponent();
 }
 
-void ADirectorsCutStage::Build()
+bool ADirectorsCutStage::Build()
 {
+	// Loading materials in the native class constructor can run before cooked startup initializes default materials.
+	Shapes = {
+		LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Cube.Cube")),
+		LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Sphere.Sphere")),
+		LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Cylinder.Cylinder")),
+		LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Cone.Cone"))
+	};
+	GodzillaMesh = LoadObject<USkeletalMesh>(nullptr, TEXT("/Game/Godzilla/Meshes/Godzilla.Godzilla"));
+	PigmentMaterial = LoadObject<UMaterialInterface>(nullptr, TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial"));
+	LightMaterial = LoadObject<UMaterialInterface>(nullptr, TEXT("/Engine/EngineMaterials/EmissiveTexturedMaterial.EmissiveTexturedMaterial"));
+	if (!GodzillaMesh || !PigmentMaterial || !LightMaterial ||
+		Shapes.ContainsByPredicate([](const TObjectPtr<UStaticMesh>& Mesh) { return !Mesh; }))
+	{
+		UE_LOG(LogTemp, Error, TEXT("Director's Cut could not load the required stage assets."));
+		return false;
+	}
 	for (TActorIterator<AStaticMeshActor> It(GetWorld()); It; ++It)
 	{
 		const UStaticMesh* Mesh = It->GetStaticMeshComponent()->GetStaticMesh();
@@ -170,6 +174,7 @@ void ADirectorsCutStage::Build()
 	}
 	BuildCashSet();
 	ShowSet(Arena);
+	return true;
 }
 
 void ADirectorsCutStage::ShowSet(USceneComponent* ActiveSet)
