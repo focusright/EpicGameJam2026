@@ -21,6 +21,18 @@
 		{
 			"Name": "AllToolsets",
 			"Enabled": true
+		},
+		{
+			"Name": "UnrealCanvasAnnotations",
+			"Enabled": true
+		},
+		{
+			"Name": "UnrealCanvasGraph",
+			"Enabled": true
+		},
+		{
+			"Name": "UnrealCanvasBridge",
+			"Enabled": true
 		}
 	]
 }
