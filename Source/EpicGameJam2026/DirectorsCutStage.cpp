@@ -9,6 +9,7 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "Engine/SkeletalMesh.h"
 #include "Engine/StaticMesh.h"
+#include "Engine/GameViewportClient.h"
 #include "Engine/StaticMeshActor.h"
 #include "Engine/Texture2D.h"
 #include "EngineUtils.h"
@@ -44,6 +45,23 @@ namespace
 		Lens->bConstrainAspectRatio = false;
 		Lens->bOverrideAspectRatioAxisConstraint = true;
 		Lens->SetAspectRatioAxisConstraint(AspectRatio_MaintainYFOV);
+	}
+
+	// Yaws the camera so Target lands at ScreenX (-1 left edge, 1 right edge) for the current viewport shape.
+	void FrameCameraOffCenter(ACameraActor& Camera, FVector Location, FVector Target, float Fov, float ScreenX)
+	{
+		FrameCamera(Camera, Location, Target, Fov);
+		FVector2D Viewport(16.0, 9.0);
+		if (UGameViewportClient* Client = Camera.GetWorld()->GetGameViewport())
+		{
+			Client->GetViewportSize(Viewport);
+		}
+		const UCameraComponent* Lens = Camera.GetCameraComponent();
+		const double HalfHeight = FMath::Tan(FMath::DegreesToRadians(Fov * 0.5)) / Lens->AspectRatio;
+		const double HalfWidth = HalfHeight * Viewport.X / FMath::Max(Viewport.Y, 1.0);
+		FRotator Rotation = Camera.GetActorRotation();
+		Rotation.Yaw -= FMath::RadiansToDegrees(FMath::Atan(ScreenX * HalfWidth));
+		Camera.SetActorRotation(Rotation);
 	}
 }
 
@@ -416,8 +434,14 @@ void ADirectorsCutStage::SetArenaCamera(ACameraActor& Camera, float Time, bool b
 {
 	if (bTitle)
 	{
-		FrameCamera(Camera, ArenaOrigin + FVector(-380, -410 + 30 * FMath::Sin(Time * 0.35f), 145),
-			ArenaOrigin + FVector(6, -228, TitleDirector ? 110 : 94), 88.0f);
+		const FVector Location = ArenaOrigin + FVector(-380, -410 + 30 * FMath::Sin(Time * 0.35f), 145);
+		if (TitleDirector)
+		{
+			// The title panel covers the left 45% of the screen; center Steven in the remaining box.
+			FrameCameraOffCenter(Camera, Location, ArenaOrigin + FVector(-90, -73, 84), 61.0f, 0.45f);
+			return;
+		}
+		FrameCamera(Camera, Location, ArenaOrigin + FVector(6, -228, 94), 88.0f);
 		return;
 	}
 	FrameCamera(Camera, ArenaOrigin + FVector(-810, 0, 1390), ArenaOrigin + FVector(85, 0, 0), 66.0f);
