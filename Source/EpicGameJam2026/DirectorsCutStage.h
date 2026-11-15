@@ -10,6 +10,7 @@ class UInstancedStaticMeshComponent;
 class UMaterialInstanceDynamic;
 class UMaterialInterface;
 class UPoseableMeshComponent;
+class USkeletalMeshComponent;
 class USkeletalMesh;
 class UStaticMesh;
 class UStaticMeshComponent;
@@ -91,7 +92,7 @@ private:
 	};
 
 	USceneComponent* Director = nullptr;
-	UPoseableMeshComponent* TitleDirector = nullptr;
+	USkeletalMeshComponent* TitleDirector = nullptr;
 	USceneComponent* VisibleSet = nullptr;
 	USceneComponent* Upper = nullptr;
 	USceneComponent* Lower = nullptr;
