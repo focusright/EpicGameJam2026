@@ -71,7 +71,10 @@ void ADirectorsCutHUD::DrawHUD()
 	switch (Game->GetPhase())
 	{
 	case EPhase::Title:
-		DrawTitle();
+		DrawTitle(false);
+		break;
+	case EPhase::TitleStart:
+		DrawTitle(true);
 		break;
 	case EPhase::Combat:
 	case EPhase::Wrap:
@@ -100,7 +103,7 @@ void ADirectorsCutHUD::NotifyHitBoxClick(FName BoxName)
 	Super::NotifyHitBoxClick(BoxName);
 }
 
-void ADirectorsCutHUD::DrawTitle()
+void ADirectorsCutHUD::DrawTitle(bool bStarting)
 {
 	const float Left = 64 * UI;
 	const float Top = Height * 0.135f;
@@ -118,8 +121,16 @@ void ADirectorsCutHUD::DrawTitle()
 	Text(TEXT("STEVEN"), Left - 5 * UI, Top + 106 * UI, 100, Paper, true);
 	Text(TEXT("Slice the film. Survive the take."), Left, Top + 270 * UI, 21, Paper);
 	Text(TEXT("Complete the reel to screen the full movie."), Left, Top + 308 * UI, 16, Muted);
-	Button(TEXT("Start Take"), Left, Top + 370 * UI, 204 * UI);
-	Text(TEXT("ENTER"), Left + 223 * UI, Top + 390 * UI, 11, Muted, false, 0, true);
+	if (bStarting)
+	{
+		Box(Left, Top + 370 * UI, 204 * UI, 57 * UI, Amber);
+		Text(TEXT("Editing..."), Left + 102 * UI, Top + 383 * UI, 20, Void, true, 0.5f);
+	}
+	else
+	{
+		Button(TEXT("Start Editing"), Left, Top + 370 * UI, 204 * UI);
+		Text(TEXT("ENTER"), Left + 223 * UI, Top + 390 * UI, 11, Muted, false, 0, true);
+	}
 	Text(TEXT("WASD  MOVE     CLICK  SLICE     SHIFT  DODGE     ESC  QUIT"),
 		Left, Height - 61 * UI, 12, Muted, false, 0, true);
 }

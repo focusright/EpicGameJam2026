@@ -32,7 +32,7 @@ private:
 	void Text(const FString& Value, float X, float Y, float Size, FColor Color, bool bHeavy = false,
 		float Align = 0.0f, bool bMono = false);
 	void Button(const TCHAR* Label, float X, float Y, float W);
-	void DrawTitle();
+	void DrawTitle(bool bStarting);
 	void DrawArena(const ADirectorsCutGameMode& Game);
 	void DrawReel(const ADirectorsCutGameMode& Game);
 	void DrawScreening(const ADirectorsCutGameMode& Game);

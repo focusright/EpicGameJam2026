@@ -332,6 +332,8 @@ void ADirectorsCutStage::BuildTitleDirector()
 	USkeletalMesh* Steven = LoadObject<USkeletalMesh>(nullptr, TEXT("/Game/Player/Mesh/1/Steven1.Steven1"));
 	UAnimSequence* TitlePose = LoadObject<UAnimSequence>(nullptr,
 		TEXT("/Game/Player/Animation/mixamo/AS_Steven1_Slash_Pose.AS_Steven1_Slash_Pose"));
+	TitleStartAnimation = LoadObject<UAnimSequence>(nullptr,
+		TEXT("/Game/Player/Animation/Stable_Sword_Outward_Slash_Anim.Stable_Sword_Outward_Slash_Anim"));
 	UStaticMesh* Machete = LoadObject<UStaticMesh>(nullptr,
 		TEXT("/Game/TripoModels/long_blade_machete_3d_model/long_blade_machete_3d_model.long_blade_machete_3d_model"));
 	if (!Steven || !TitlePose || !Machete)
@@ -356,6 +358,18 @@ void ADirectorsCutStage::BuildTitleDirector()
 	Blade->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	Blade->RegisterComponent();
 	Director->SetVisibility(false, true);
+}
+
+float ADirectorsCutStage::PlayTitleStartAnimation()
+{
+	if (!TitleDirector || !TitleStartAnimation)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("The Godzilla Steven title slash animation could not be played."));
+		return 0.0f;
+	}
+	TitleDirector->PlayAnimation(TitleStartAnimation, false);
+	TitleDirector->SetPosition(0.0f, false);
+	return TitleStartAnimation->GetPlayLength();
 }
 
 void ADirectorsCutStage::BuildEnemy(int32 Index)
@@ -402,8 +416,8 @@ void ADirectorsCutStage::SetArenaCamera(ACameraActor& Camera, float Time, bool b
 {
 	if (bTitle)
 	{
-		FrameCamera(Camera, ArenaOrigin + FVector(-520, -490 + 30 * FMath::Sin(Time * 0.35f), 265),
-			ArenaOrigin + FVector(-12, -225, TitleDirector ? 76 : 94), 55.0f);
+		FrameCamera(Camera, ArenaOrigin + FVector(-380, -410 + 30 * FMath::Sin(Time * 0.35f), 145),
+			ArenaOrigin + FVector(6, -228, TitleDirector ? 110 : 94), 88.0f);
 		return;
 	}
 	FrameCamera(Camera, ArenaOrigin + FVector(-810, 0, 1390), ArenaOrigin + FVector(85, 0, 0), 66.0f);

@@ -6,6 +6,7 @@
 #include "DirectorsCutStage.generated.h"
 
 class ACameraActor;
+class UAnimSequence;
 class UInstancedStaticMeshComponent;
 class UMaterialInstanceDynamic;
 class UMaterialInterface;
@@ -29,6 +30,7 @@ public:
 	static constexpr float ArenaWidth = 880.0f;
 
 	bool Build();
+	float PlayTitleStartAnimation();
 	void ResetArena();
 	void SetArenaCamera(ACameraActor& Camera, float Time, bool bTitle) const;
 	void PoseDirector(FVector2D Position, FVector2D Facing, float Stride, float Slash, float Split);
@@ -54,6 +56,9 @@ private:
 
 	UPROPERTY()
 	TObjectPtr<USkeletalMesh> GodzillaMesh;
+
+	UPROPERTY()
+	TObjectPtr<UAnimSequence> TitleStartAnimation;
 
 	UPROPERTY()
 	TArray<TObjectPtr<UStaticMesh>> Shapes;

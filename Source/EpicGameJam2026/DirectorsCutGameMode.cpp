@@ -202,6 +202,14 @@ void ADirectorsCutGameMode::Confirm()
 	switch (Phase)
 	{
 	case EPhase::Title:
+		TitleStartDuration = Stage->PlayTitleStartAnimation();
+		if (TitleStartDuration > 0.0f)
+		{
+			SetPhase(EPhase::TitleStart);
+			break;
+		}
+		StartTake();
+		break;
 	case EPhase::Reception:
 		StartTake();
 		break;
@@ -279,7 +287,16 @@ void ADirectorsCutGameMode::Tick(float DeltaSeconds)
 	switch (Phase)
 	{
 	case EPhase::Title:
-		Stage->SetArenaCamera(*Camera, PhaseTime, true);
+		TitleCameraTime += DeltaSeconds;
+		Stage->SetArenaCamera(*Camera, TitleCameraTime, true);
+		break;
+	case EPhase::TitleStart:
+		TitleCameraTime += DeltaSeconds;
+		Stage->SetArenaCamera(*Camera, TitleCameraTime, true);
+		if (PhaseTime >= TitleStartDuration + 0.1f)
+		{
+			StartTake();
+		}
 		break;
 	case EPhase::Combat:
 		UpdateCombat(DeltaSeconds);

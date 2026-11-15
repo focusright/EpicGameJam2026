@@ -1,28 +1,39 @@
-# Steven’s machete animation handoff
+# Godzilla Steven handoff for Cursor
 
-Open `G:/gamejams/EpicGameJam2026/EpicGameJam2026.uproject` in Unreal Engine 5.9. The user wants to learn the animation workflow and personally pose and time Steven’s two-handed horizontal slash with the long machete.
+Project: `G:/gamejams/EpicGameJam2026/EpicGameJam2026.uproject` (Unreal Engine 5.9).
 
-## How to help
+## Current request and blocker
 
-- The user explicitly asked to leave the existing animation alone. Coach them through the editor one step at a time. Let them set the poses, timing, and performance. Ask before making any project edits or generating another take.
-- For editor inspection, prefer the existing local Unreal MCP connection if Cursor has access to it. It previously responded at `http://127.0.0.1:8000/mcp`. The user objected to desktop takeover. Give manual Unreal steps if the direct connection is unavailable.
-- If usage is running low, keep the next step small and record the current frame, pose, and blocker. The user wants an early warning when the current client exposes remaining usage.
+The opening screen has the title and button on the left and Steven in the scene on the right. The user wants Steven centered in that right-hand visible area. Preserve the earlier requirements: show his face from a low, close camera; keep his full body and the entire sword animation in frame; do not introduce a camera snap when Start Editing is clicked.
 
-## Project state
+The latest user screenshot is `C:/Users/rocke/AppData/Local/Temp/codex-clipboard-27587611-9561-47a4-9a3d-277494f5f0c2.png`. It shows Steven too far left in the scene area. At 1920 px wide, the scene begins around x=900 and its center is around x=1410.
 
-| Asset | Unreal content path | Purpose |
-| --- | --- | --- |
-| Steven’s Control Rig | `/Game/Player/Rig/CR_Steven_Body` | Duplicated from Manny’s `CR_Mannequin_Body` and adapted to Steven. The neutral pose was checked against all 80 Steven reference bones. |
-| Steven’s mesh and skeleton | `/Game/Player/Mesh/Steven_Mesh` and `/Game/Player/Mesh/Steven_Skeleton` | Character and skeleton used by the rig and export. |
-| Authoring Level Sequence | `/Game/Player/Animation/LS_Steven_MacheteSlash` | Contains Steven’s editable Control Rig track, the machete attached to `hand_r`, and the AnimGenOffline track with Kimodo constraints. |
-| Previous animation export | `/Game/Player/Animation/AS_Steven_MacheteSlash` | A 1.6-second draft. The user found both the original Kimodo export and the rebuilt version unacceptable. Preserve it as a reference. |
-| Long machete mesh | `/Game/TripoModels/long_blade_machete_3d_model/long_blade_machete_3d_model` | The weapon already bound in the authoring sequence. |
+**The camera framing is unfinished.** The current code centers Steven's opening pose, but the sword tip runs off the right edge near 1.0 second into the slash. Do not report the framing as complete until the full animation has been checked.
 
-The first Kimodo export had a backward lean, sliding feet, and folded wrists. The second draft used the existing Control Rig poses for the body and a scripted two-hand grip. The user said it looked better and still fell well short. Their latest recording is `C:/Users/rocke/Videos/steven-wacked-02.mp4`. No new user-authored poses have been reported since the switch to coaching.
+Current values in `Source/EpicGameJam2026/DirectorsCutStage.cpp`:
 
-## Where to resume
+- Title Steven relative transform: yaw `110`, location `(-90, -73, -87)`, scale `2.0`. I reverted an experimental yaw of `135`: it made the face more of a side profile and still clipped the sword.
+- Title camera position: `ArenaOrigin + (-380, -410 + 30 * sin(Time * 0.35), 145)`.
+- Title camera aim: `ArenaOrigin + (6, -228, 110)` when the Steven mesh exists; FOV `88`.
+- This puts Steven's body near the center of the right-hand area at the opening pose. The sword is clipped at the right edge around 1.0 second into the animation. The latest matching video is `Saved/Recordings/Viewport_20261115-061226_DTUZPCBUUELVPM2WV0R9XH308.mp4` (yaw 110, FOV 88). The frame extracted at 1.0 second is `Saved/Recordings/center_88_10.png`.
 
-1. Ask what the user currently sees in Unreal. If they have yet to start posing, guide them to open `LS_Steven_MacheteSlash` in Sequencer. If they want a clean take, walk them through duplicating it in the editor before editing.
-2. Start with the guard at frame 0, or pick up at whatever frame they have already reached. Set the stance and torso first. Use `hand_r_ik_ctrl` to place the blade and `hand_l_ik_ctrl` to bring the support hand onto the handle. These controls need the arms in IK mode. View the pose from the front and side with the prop attached, then help the user key the controls they changed.
-3. Once the user is happy with the guard, work through windup, strike, follow-through, and recovery. The old sequence is 30 fps with Kimodo constraints at frames 0, 10, 15, 19, 24, 32, and 46. The user can choose different timing for their take.
-4. When the user is ready for AnimGenOffline, help them turn their chosen poses into Kimodo constraints and test a take. Review the result with Steven and the machete together before baking or exporting anything.
+A prior framing kept the entire swing in view but left Steven too far left: same camera position, aim `(-55, -150, 110)`, FOV `66`. The matching video is `Saved/Recordings/Viewport_20261115-060240_6NVKXGDQ3HMNGWEBH1MINUK9D.mp4`. Another FOV 74 attempt moved him partway toward center but left him short of the panel center; its swing video is `Saved/Recordings/Viewport_20261115-061013_C2UVBDX84WKD8VNHZI2EAP9XM.mp4`.
+
+Possible next approach: find a composition between these two extremes, or make a gentle, continuous camera adjustment during the swing while keeping the opening pose centered. The user already rejected a sudden camera shift on click. Do not change the authored animation just to solve framing. Check the raised sword at about 0.6 s, its far right reach at about 1.0 s, and the boots and head throughout. Also check clicks after the title camera has drifted to both ends of its `sin` movement.
+
+## Existing title implementation
+
+- Opening Steven mesh: `/Game/Player/Mesh/1/Steven1`.
+- Opening pose: `/Game/Player/Animation/mixamo/AS_Steven1_Slash_Pose`.
+- Start slash: `/Game/Player/Animation/Stable_Sword_Outward_Slash_Anim` (2.0333 s, Steven1 skeleton). It begins and ends in the opening pose.
+- Machete: `/Game/TripoModels/long_blade_machete_3d_model/long_blade_machete_3d_model`, attached to Steven's `hand_rSocket`.
+- Steven's animation sits roughly 43 cm above its root, so the title mesh has a `-87` Z offset at scale 2.0 to place his feet on the floor.
+- `DirectorsCutHUD.cpp` labels the button **Start Editing**. Clicking it or pressing Enter calls `Confirm()` in `DirectorsCutGameMode.cpp`. The `TitleStart` phase plays the slash, waits for its duration plus 0.1 s, then enters combat. The title camera has a separate `TitleCameraTime` that continues across the click; this removed the previous camera snap. `Config/DefaultGame.ini` cooks `/Game/Player/Animation` for packaged builds.
+
+## Files and validation
+
+The source and config changes for the title pose, button, start animation, and camera are currently **uncommitted**. Check `git status --short` before editing. The yaw reversion from 135 to 110 passed Live Coding, so the open editor matches the current source. Earlier iterations passed a Win64 Development build; the camera framing still needs its own final build after the clipping is solved.
+
+Unreal MCP was available in this session through the local editor. We used `LiveCodingToolset.LiveCodingToolset.CompileLiveCoding`, `EditorToolset.EditorAppToolset.StartPIE/StopPIE`, `InputToolset.InputToolset.ApplyInput` with Enter, and `SceneCaptureToolset.SceneCaptureToolset.CaptureGameViewport` or `StartViewportRecording/StopViewportRecording`. If Cursor lacks MCP, use the open Unreal editor and Play In Editor manually. The recorded videos under `Saved/Recordings` are local test artifacts, not project assets.
+
+The older `LS_Steven_MacheteSlash` Control Rig workflow is separate from this opening-screen camera task. The user has supplied the finished slash asset above; preserve it.

@@ -15,7 +15,7 @@ namespace DirectorsCut
 	constexpr float PayoutDuration = 4.2f;
 	constexpr float PayoutStart = 0.55f;
 	constexpr float BagInterval = 0.46f;
-	enum class EPhase : uint8 { Title, Combat, Wrap, Screening, GetPaid, Payout, Reception };
+	enum class EPhase : uint8 { Title, TitleStart, Combat, Wrap, Screening, GetPaid, Payout, Reception };
 	enum class EEnemyMove : uint8 { Waiting, Chase, Windup, Lunge, Recover, Cut };
 	enum class ECue : uint8 { Swing, Splice, Dash, Warning, Impact, Projector, Aircraft, Cash, Count };
 
@@ -99,6 +99,8 @@ private:
 
 	DirectorsCut::EPhase Phase = DirectorsCut::EPhase::Title;
 	float PhaseTime = 0.0f;
+	float TitleCameraTime = 0.0f;
+	float TitleStartDuration = 0.0f;
 	FVector2D Position = FVector2D::ZeroVector;
 	FVector2D Facing = FVector2D::UnitX();
 	FVector2D DashDirection = FVector2D::UnitX();
