@@ -6,6 +6,7 @@
 #include "Components/StaticMeshComponent.h"
 #include "Engine/SkeletalMesh.h"
 #include "Engine/StaticMesh.h"
+#include "Materials/MaterialInstanceDynamic.h"
 #include "Materials/MaterialInterface.h"
 
 using namespace DirectorsCut;
@@ -54,11 +55,28 @@ void ADirectorsCutStage::BuildCity()
 	const FColor FadedPaint(119, 116, 96);
 	const FColor Crack(24, 27, 28);
 	const FColor RubbleStone[] = {FColor(100, 95, 84), FColor(135, 130, 116), FColor(68, 71, 68)};
-	Prop(City, EShape::Box, FVector(0, 0, -106), FVector(14500, 13700, 200), Pavement);
-	Prop(City, EShape::Box, FVector(0, 0, -3.5), FVector(12500, 650, 7), Asphalt);
+	UMaterialInterface* WeatheredPaving = LoadObject<UMaterialInterface>(nullptr,
+		TEXT("/Game/Props/CitySurface/M_WeatheredPaving.M_WeatheredPaving"));
+	TMap<uint32, UMaterialInstanceDynamic*> PavingMaterials;
+	const auto AddGround = [&](FVector Location, FVector Size, FColor Color, FRotator Rotation = FRotator::ZeroRotator)
+	{
+		UStaticMeshComponent* Surface = Shape(City, EShape::Box, Location, Size, Color, Rotation);
+		if (WeatheredPaving)
+		{
+			UMaterialInstanceDynamic*& Material = PavingMaterials.FindOrAdd(Color.ToPackedARGB());
+			if (!Material)
+			{
+				Material = UMaterialInstanceDynamic::Create(WeatheredPaving, this);
+				Material->SetVectorParameterValue(TEXT("PavingTint"), FLinearColor::FromSRGBColor(Color) * 2.7f);
+			}
+			Surface->SetMaterial(0, Material);
+		}
+	};
+	AddGround(FVector(0, 0, -106), FVector(14500, 13700, 200), Pavement);
+	AddGround(FVector(0, 0, -3.5), FVector(12500, 650, 7), Asphalt);
 	for (double Side : {-1.0, 1.0})
 	{
-		Prop(City, EShape::Box, FVector(0, Side * 3112.5, -3.5), FVector(650, 5575, 7), Asphalt);
+		AddGround(FVector(0, Side * 3112.5, -3.5), FVector(650, 5575, 7), Asphalt);
 	}
 	FRandomStream Random(8415);
 	FRandomStream StreetRandom(3671);
@@ -291,6 +309,201 @@ void ADirectorsCutStage::BuildCity()
 			Prop(City, EShape::Box, FVector(Index * 43 - 195, Side * 355, 0.7), FVector(26, 99, 1), Paint);
 		}
 	}
+	// Extend the avenue into the pale apron visible behind the last buildings in the opening shot.
+	constexpr double PerimeterJunction = -6600.0;
+	AddGround(FVector(-6425, 0, -3.5), FVector(350, 650, 7), Asphalt);
+	AddGround(FVector(PerimeterJunction - 140, 0, -3.5), FVector(280, 3600, 7), Asphalt);
+	const FColor CarColors[] = {FColor(174, 174, 158), Rust, FColor(83, 113, 127), FColor(186, 147, 87)};
+	const FColor CarGlass(28, 44, 51);
+	const auto AddCar = [&](double X, double Y, double Yaw, int32 ColorIndex, bool bVan)
+	{
+		const FRotator Heading(0, Yaw, 0);
+		const FVector Origin(X, Y, 0);
+		const FColor Body = CarColors[ColorIndex];
+		const double RoofHeight = bVan ? 50 : 39;
+		const auto Part = [&](EShape Mesh, FVector Offset, FVector Size, FColor Color, FRotator Rotation = FRotator::ZeroRotator)
+		{
+			Prop(City, Mesh, Origin + Heading.RotateVector(Offset), Size, Color,
+				(Heading.Quaternion() * Rotation.Quaternion()).Rotator());
+		};
+		Part(EShape::Box, FVector(0, 0, 17), FVector(121, 49, 20), Body);
+		Part(EShape::Box, FVector(-5, 0, (RoofHeight + 25) / 2),
+			FVector(bVan ? 76 : 57, 44, RoofHeight - 25), CarGlass);
+		Part(EShape::Box, FVector(-8, 0, RoofHeight), FVector(bVan ? 76 : 45, 45, 5), Body);
+		for (double Side : {-1.0, 1.0})
+		{
+			Part(EShape::Box, FVector(-8, Side * 22, (RoofHeight + 25) / 2), FVector(4, 2, RoofHeight - 25), Body);
+			for (double Axle : {-38.0, 38.0})
+			{
+				Part(EShape::Cylinder, FVector(Axle, Side * 24, 10), FVector(19, 19, 8), Black, FRotator(0, 0, 90));
+				Part(EShape::Cylinder, FVector(Axle, Side * 29, 10), FVector(9, 9, 2), Concrete, FRotator(0, 0, 90));
+			}
+			Part(EShape::Box, FVector(61, Side * 16, 21), FVector(3, 11, 5), StreetPaint);
+			Part(EShape::Box, FVector(-61, Side * 16, 21), FVector(3, 9, 5), Rust);
+		}
+	};
+	for (double Side : {-1.0, 1.0})
+	{
+		for (int32 Block = 0; Block < 7; ++Block)
+		{
+			const double Y = Side * (323 + Block * 213);
+			Prop(City, EShape::Box, FVector(-6895, Y, -0.5), FVector(25, 208, 9), Curb);
+			Prop(City, EShape::Box, FVector(-6985, Y, -3.5), FVector(150, 210, 6), Block % 2 ? RoadShoulder : Concrete);
+			Prop(City, EShape::Box, FVector(-6740, Y, 0.7), FVector(7, 96, 1), FadedPaint);
+			if (Block % 2 == 0)
+			{
+				Prop(City, EShape::Box, FVector(-6895, Y, 51), FVector(10, 10, 102), Steel);
+				Prop(City, EShape::Box, FVector(-6869, Y, 100), FVector(58, 10, 8), Steel);
+				Prop(City, EShape::Box, FVector(-6842, Y, 97), FVector(18, 13, 6), Lamp);
+			}
+		}
+		for (int32 Stripe = 0; Stripe < 9; ++Stripe)
+		{
+			Prop(City, EShape::Box, FVector(-6521, Side * (21 + Stripe * 31), 0.7),
+				FVector(93, 14, 1), Stripe % 3 == 0 ? FadedPaint : StreetPaint);
+		}
+		AddCar(-3930, Side * 225, Side < 0 ? 180 : 0, 2, false);
+		AddCar(-4790, Side * 229, Side < 0 ? 174 : 7, 3, false);
+		AddCar(-5610, Side * 224, Side < 0 ? 185 : -9, 1, false);
+		AddCar(-6130, Side * 202, Side < 0 ? 170 : 14, 0, true);
+		AddCar(-6730, Side * 420, Side * 90 + 14, 2, true);
+		AddCar(-6795, Side * 720, Side * 90 - 12, Side < 0 ? 1 : 0, false);
+		AddCar(-6705, Side * 1075, Side * 90 + 8, 3, true);
+	}
+	for (int32 Patch = 0; Patch < 70; ++Patch)
+	{
+		const double X = StreetRandom.FRandRange(-6872, -6610);
+		const double Side = Patch % 2 == 0 ? 1.0 : -1.0;
+		const double Y = Side * StreetRandom.FRandRange(340, 1630);
+		const double Size = StreetRandom.FRandRange(15, 53);
+		Prop(City, EShape::Box, FVector(X, Y, 0.4), FVector(Size, Size * 1.6, 0.6),
+			RoadRepair[Patch % UE_ARRAY_COUNT(RoadRepair)], FRotator(0, StreetRandom.FRandRange(-28, 28), 0));
+		if (Patch % 2 == 0)
+		{
+			const double Edge = Patch % 4 == 0 ? -6852 : -6622;
+			Prop(City, EShape::Box, FVector(Edge + StreetRandom.FRandRange(-14, 14), Y, Size * 0.12),
+				FVector(Size * 0.8, Size * 0.5, Size * 0.34), RubbleStone[Patch % UE_ARRAY_COUNT(RubbleStone)],
+				FRotator(11, StreetRandom.FRandRange(0, 180), 13));
+		}
+	}
+
+	const FColor LotSurface(55, 58, 58);
+	const FColor Landscaping(70, 77, 54);
+	const FColor SignBlue(45, 100, 140);
+	const auto AddSign = [&](FVector Ground, double Yaw, bool bParking)
+	{
+		const FRotator Rotation(0, Yaw, 0);
+		const auto SignPart = [&](FVector Offset, FVector Size, FColor Color)
+		{
+			Prop(City, EShape::Box, Ground + Rotation.RotateVector(Offset), Size, Color, Rotation);
+		};
+		SignPart(FVector(0, 0, 36), FVector(6, 6, 72), Steel);
+		SignPart(FVector(0, 0, 69), FVector(33, 6, 34), bParking ? SignBlue : Rust);
+		// A parking P or a no-entry bar appears on both faces.
+		for (double Face : {-1.0, 1.0})
+		{
+			if (bParking)
+			{
+				SignPart(FVector(-5, Face * 3.5, 69), FVector(4, 1, 21), StreetPaint);
+				SignPart(FVector(1, Face * 3.5, 77), FVector(12, 1, 4), StreetPaint);
+				SignPart(FVector(1, Face * 3.5, 69), FVector(12, 1, 4), StreetPaint);
+				SignPart(FVector(5, Face * 3.5, 73), FVector(4, 1, 8), StreetPaint);
+			}
+			else
+			{
+				SignPart(FVector(0, Face * 3.5, 69), FVector(23, 1, 6), StreetPaint);
+			}
+		}
+	};
+	const auto AddStreetlight = [&](FVector Ground, double Yaw)
+	{
+		const FRotator Heading(0, Yaw, 0);
+		Prop(City, EShape::Box, Ground + FVector(0, 0, 67), FVector(9, 9, 135), Steel);
+		Prop(City, EShape::Box, Ground + Heading.RotateVector(FVector(26, 0, 131)), FVector(59, 8, 8), Steel, Heading);
+		Prop(City, EShape::Box, Ground + Heading.RotateVector(FVector(54, 0, 128)), FVector(16, 14, 5), Lamp, Heading);
+	};
+
+	// Collector streets connect the ends of the two main streets. Parking courts and planted
+	// islands sit outside the collector, where the city previously gave way to bare ground.
+	for (bool bCrossAxis : {false, true})
+	{
+		const double RoadOffset = bCrossAxis ? 5120 : 5510;
+		const double RoadLength = bCrossAxis ? 10788 : 10470;
+		const double RoadYaw = bCrossAxis ? 0 : 90;
+		const FRotator RoadHeading(0, RoadYaw, 0);
+		for (double Side : {-1.0, 1.0})
+		{
+			const auto AtEdge = [bCrossAxis, Side](double Along, double Out, double Z)
+			{
+				return bCrossAxis ? FVector(Along, Side * Out, Z) : FVector(Side * Out, Along, Z);
+			};
+			AddGround(AtEdge(0, RoadOffset, -2.9), FVector(RoadLength, 232, 6), Asphalt, RoadHeading);
+			for (int32 Segment = -10; Segment <= 10; ++Segment)
+			{
+				if (Segment == 0)
+				{
+					continue;
+				}
+				const double Along = Segment * 475.0;
+				Prop(City, EShape::Box, AtEdge(Along, RoadOffset, 0.7), FVector(101, 8, 1), FadedPaint, RoadHeading);
+				Prop(City, EShape::Box, AtEdge(Along, RoadOffset + 121, 0), FVector(465, 14, 10), Curb, RoadHeading);
+				Prop(City, EShape::Box, AtEdge(Along, RoadOffset + 163, -1), FVector(459, 68, 10), Pavement, RoadHeading);
+				if (Segment % 2 == 0)
+				{
+					const double LampYaw = bCrossAxis ? -Side * 90 : (Side > 0 ? 180 : 0);
+					AddStreetlight(AtEdge(Along, RoadOffset + 151, 4), LampYaw);
+					const FVector Parked = AtEdge(Along + 140, RoadOffset + 76, 0);
+					AddCar(Parked.X, Parked.Y, RoadYaw + (Side < 0 ? 180 : 0), FMath::Abs(Segment / 2) % 4, Segment % 4 == 0);
+				}
+				if (Segment % 3 == 0)
+				{
+					const FVector Mark = AtEdge(Along - 180, RoadOffset + 140, 4);
+					AddSign(Mark, RoadYaw + 90, Segment > 0);
+					for (double Delta : {-25.0, 25.0})
+					{
+						Prop(City, EShape::Cylinder, AtEdge(Along - 180 + Delta, RoadOffset + 140, 17),
+							FVector(7, 7, 26), Segment > 0 ? Steel : Lamp);
+					}
+				}
+			}
+			for (int32 Court = -2; Court <= 2; ++Court)
+			{
+				const double Along = Court * 1740.0 + (Court == 0 ? 800.0 : 0.0);
+				const double CourtOut = RoadOffset + 645;
+				AddGround(AtEdge(Along, CourtOut, -2.8), FVector(940, 670, 5), LotSurface, RoadHeading);
+				AddGround(AtEdge(Along, RoadOffset + 239, -2.4), FVector(160, 210, 5), LotSurface, RoadHeading);
+				const FVector Entrance = AtEdge(Along + 91, RoadOffset + 299, 0);
+				AddSign(Entrance, RoadYaw, true);
+				for (int32 Stall = 0; Stall < 9; ++Stall)
+				{
+					const double Bay = Along + (Stall - 4) * 87.0;
+					for (double Row : {-1.0, 1.0})
+					{
+						const double Out = CourtOut + Row * 195;
+						Prop(City, EShape::Box, AtEdge(Bay - 43, Out, 0.4), FVector(4, 142, 1), FadedPaint, RoadHeading);
+						if ((Stall + Court + (Row > 0 ? 2 : 0)) % 3 == 0)
+						{
+							const FVector Parked = AtEdge(Bay, Out, 0);
+							const double ParkYaw = RoadYaw + Row * 90 + (Stall % 2 == 0 ? 5 : -3);
+							AddCar(Parked.X, Parked.Y, ParkYaw, (Stall + Court + 2) % 4, Stall % 4 == 0);
+						}
+					}
+				}
+				for (double End : {-1.0, 1.0})
+				{
+					const double EndAlong = Along + End * 425;
+					Prop(City, EShape::Box, AtEdge(EndAlong, CourtOut, 2), FVector(75, 427, 12), Curb, RoadHeading);
+					Prop(City, EShape::Box, AtEdge(EndAlong, CourtOut, 8), FVector(65, 414, 4), Landscaping, RoadHeading);
+					for (double Tree : {-125.0, 0.0, 125.0})
+					{
+						Prop(City, EShape::Cylinder, AtEdge(EndAlong, CourtOut + Tree, 25), FVector(9, 9, 35), CashDark);
+						Prop(City, EShape::Ball, AtEdge(EndAlong, CourtOut + Tree, 57), FVector(54, 52, 60), Landscaping);
+					}
+				}
+			}
+		}
+	}
+
 	// A lattice tower anchors the Tokyo skyline across camera cuts.
 	const FVector Tower(-2300, 2150, 0);
 	for (double X : {-1.0, 1.0})
