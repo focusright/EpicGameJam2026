@@ -6,6 +6,7 @@
 #include "DirectorsCutStage.h"
 #include "InputCoreTypes.h"
 #include "Kismet/GameplayStatics.h"
+#include "Kismet/KismetSystemLibrary.h"
 #include "Sound/SoundWaveProcedural.h"
 
 namespace DirectorsCut
@@ -48,6 +49,7 @@ void ADirectorsCutController::SetupInputComponent()
 	InputComponent->BindKey(EKeys::LeftShift, IE_Pressed, this, &ADirectorsCutController::Dodge);
 	InputComponent->BindKey(EKeys::RightMouseButton, IE_Pressed, this, &ADirectorsCutController::Dodge);
 	InputComponent->BindKey(EKeys::Enter, IE_Pressed, this, &ADirectorsCutController::Confirm);
+	InputComponent->BindKey(EKeys::Escape, IE_Pressed, this, &ADirectorsCutController::QuitGame);
 }
 
 ADirectorsCutGameMode* ADirectorsCutController::GetCutGame() const
@@ -122,6 +124,11 @@ void ADirectorsCutController::Confirm()
 	{
 		Game->Confirm();
 	}
+}
+
+void ADirectorsCutController::QuitGame()
+{
+	UKismetSystemLibrary::QuitGame(this, this, EQuitPreference::Quit, false);
 }
 
 ADirectorsCutGameMode::ADirectorsCutGameMode()

@@ -120,7 +120,8 @@ void ADirectorsCutHUD::DrawTitle()
 	Text(TEXT("Complete the reel to screen the full movie."), Left, Top + 308 * UI, 16, Muted);
 	Button(TEXT("Start Take"), Left, Top + 370 * UI, 204 * UI);
 	Text(TEXT("ENTER"), Left + 223 * UI, Top + 390 * UI, 11, Muted, false, 0, true);
-	Text(TEXT("WASD  MOVE     CLICK  SLICE     SHIFT  DODGE"), Left, Height - 61 * UI, 12, Muted, false, 0, true);
+	Text(TEXT("WASD  MOVE     CLICK  SLICE     SHIFT  DODGE     ESC  QUIT"),
+		Left, Height - 61 * UI, 12, Muted, false, 0, true);
 }
 
 void ADirectorsCutHUD::DrawArena(const ADirectorsCutGameMode& Game)
