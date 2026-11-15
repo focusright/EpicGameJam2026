@@ -632,35 +632,47 @@ void ADirectorsCutStage::BuildEnemy(int32 Index)
 	Enemy.Root = Group(Arena);
 	Enemy.Top = Group(Enemy.Root, FVector(0, 0, 117));
 	Enemy.Bottom = Group(Enemy.Root, FVector(0, 0, 117));
-	const FColor Frame(34, 30, 32);
-	const FColor Stock = Shots[Index].Color;
-	for (int32 Half = 0; Half < 2; ++Half)
+	const FColor FilmStock(18, 18, 20);
+	constexpr double Thickness = 3.0;
+	constexpr double FrameSize = 152.0;
+	constexpr double BorderWidth = 11.0;
+	constexpr double RailHeight = 23.0;
+	constexpr double HoleHeight = 11.0;
+	constexpr double HoleWidth = 12.0;
+	constexpr double HoleSpacing = 19.0;
+	constexpr int32 HoleCount = 7;
+	constexpr double WindowHalfHeight = FrameSize / 2 - RailHeight;
+	constexpr double BandHeight = (RailHeight - HoleHeight) / 2;
+
+	for (double Half : {-1.0, 1.0})
 	{
-		USceneComponent* Part = Half == 0 ? Enemy.Bottom : Enemy.Top;
-		const double Height = Half == 0 ? -43.0 : 43.0;
-		Shape(Part, EShape::Box, FVector(0, 0, Height), FVector(19, 83, 86), Frame);
+		USceneComponent* Part = Half < 0 ? Enemy.Bottom : Enemy.Top;
 		for (double Side : {-1.0, 1.0})
 		{
-			Shape(Part, EShape::Box, FVector(0, Side * 40, Height), FVector(23, 5, 86), Sprocket);
-			for (int32 Hole = 0; Hole < 4; ++Hole)
-			{
-				for (double Face : {-1.0, 1.0})
-				{
-					Shape(Part, EShape::Box, FVector(Face * 10, Side * 32.5, Height - 30 + 20 * Hole),
-						FVector(3, 8, 11), Sprocket);
-				}
-			}
+			Shape(Part, EShape::Box,
+				FVector(0, Side * (FrameSize - BorderWidth) / 2, Half * WindowHalfHeight / 2),
+				FVector(Thickness, BorderWidth, WindowHalfHeight), FilmStock);
 		}
-		for (double Face : {-1.0, 1.0})
+
+		const double RailZ = Half * (WindowHalfHeight + RailHeight / 2);
+		for (double Edge : {-1.0, 1.0})
 		{
-			for (double Row : {-21.0, 21.0})
-			{
-				Shape(Part, EShape::Box, FVector(Face * 10, 0, Height + Row), FVector(4, 51, 38), Stock);
-				Shape(Part, EShape::Box, FVector(Face * 12.1, 0, Height + Row - 10), FVector(1, 46, 13), Teal);
-				Shape(Part, EShape::Box, FVector(Face * 13, -11, Height + Row + 8), FVector(2, 10, 6), Ink);
-				Shape(Part, EShape::Box, FVector(Face * 13, 11, Height + Row + 8), FVector(2, 10, 6), Ink);
-			}
+			Shape(Part, EShape::Box, FVector(0, 0, RailZ + Edge * (HoleHeight + BandHeight) / 2),
+				FVector(Thickness, FrameSize, BandHeight), FilmStock);
 		}
+
+		// Leave actual openings between the bridges so the sprockets read from either face.
+		double BridgeStart = -FrameSize / 2;
+		for (int32 Hole = 0; Hole < HoleCount; ++Hole)
+		{
+			const double HoleCenter = (Hole - (HoleCount - 1) / 2.0) * HoleSpacing;
+			const double BridgeEnd = HoleCenter - HoleWidth / 2;
+			Shape(Part, EShape::Box, FVector(0, (BridgeStart + BridgeEnd) / 2, RailZ),
+				FVector(Thickness, BridgeEnd - BridgeStart, HoleHeight), FilmStock);
+			BridgeStart = HoleCenter + HoleWidth / 2;
+		}
+		Shape(Part, EShape::Box, FVector(0, (BridgeStart + FrameSize / 2) / 2, RailZ),
+			FVector(Thickness, FrameSize / 2 - BridgeStart, HoleHeight), FilmStock);
 	}
 	Enemy.Tell = Shape(Enemy.Root, EShape::Box, FVector(105, 0, 3), FVector(270, 15, 3), Red, FRotator::ZeroRotator, true);
 	Enemy.Root->SetVisibility(false, true);
