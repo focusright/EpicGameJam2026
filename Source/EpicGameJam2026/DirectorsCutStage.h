@@ -129,8 +129,11 @@ private:
 		FColor Color, FRotator Rotation = FRotator::ZeroRotator, bool bGlow = false);
 	void Prop(USceneComponent* Parent, EShape Kind, FVector Location, FVector Size,
 		FColor Color, FRotator Rotation = FRotator::ZeroRotator);
+	void Dress(USceneComponent* Parent, UStaticMesh* Mesh, FVector Location, float Scale = 1.0f,
+		FRotator Rotation = FRotator::ZeroRotator);
 	void PointLight(USceneComponent* Parent, FVector Location, FColor Color, float Intensity, float Radius);
 	void BuildArena();
+	void BuildArenaDressing();
 	void BuildDirector();
 	void BuildTitleDirector();
 	void BuildEnemy(int32 Index);

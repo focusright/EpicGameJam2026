@@ -139,6 +139,22 @@ void ADirectorsCutStage::Prop(USceneComponent* Parent, EShape Kind, FVector Loca
 	Batch->Instances->AddInstance(FTransform(Rotation, Location, Size / 100.0));
 }
 
+void ADirectorsCutStage::Dress(USceneComponent* Parent, UStaticMesh* Mesh, FVector Location, float Scale,
+	FRotator Rotation)
+{
+	if (!Mesh)
+	{
+		return;
+	}
+	UStaticMeshComponent* PropMesh = NewObject<UStaticMeshComponent>(this);
+	PropMesh->SetupAttachment(Parent);
+	PropMesh->SetStaticMesh(Mesh);
+	PropMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	PropMesh->SetRelativeTransform(FTransform(Rotation, Location, FVector(Scale)));
+	PropMesh->SetCastShadow(true);
+	PropMesh->RegisterComponent();
+}
+
 void ADirectorsCutStage::PointLight(USceneComponent* Parent, FVector Location, FColor Color, float Intensity, float Radius)
 {
 	UPointLightComponent* Lamp = NewObject<UPointLightComponent>(this);
@@ -266,6 +282,119 @@ void ADirectorsCutStage::BuildArena()
 		const double Y = Index * 190 - 1045;
 		Prop(Arena, EShape::Box, FVector(735, Y, 205), FVector(32, 183, 470), Ink);
 		Prop(Arena, EShape::Box, FVector(715, Y + 82, 205), FVector(16, 6, 470), Teal);
+	}
+	BuildArenaDressing();
+}
+
+void ADirectorsCutStage::BuildArenaDressing()
+{
+	UStaticMesh* CanBottom = LoadObject<UStaticMesh>(nullptr,
+		TEXT("/Game/Props/FilmReelCanned/film_reel/StaticMeshes/SM_FilmReelCanBottom.SM_FilmReelCanBottom"));
+	UStaticMesh* CanTop = LoadObject<UStaticMesh>(nullptr,
+		TEXT("/Game/Props/FilmReelCanned/film_reel/StaticMeshes/SM_FilmReelCanTop.SM_FilmReelCanTop"));
+	UStaticMesh* Reel = LoadObject<UStaticMesh>(nullptr,
+		TEXT("/Game/Props/FilmReelCanned/film_reel/StaticMeshes/SM_FilmReelRoll.SM_FilmReelRoll"));
+	UStaticMesh* Tape = LoadObject<UStaticMesh>(nullptr,
+		TEXT("/Game/Props/FilmReelCanned/film_reel/StaticMeshes/SM_FilmReelTape.SM_FilmReelTape"));
+	if (!CanBottom || !CanTop || !Reel || !Tape)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Director's Cut could not load film reel props."));
+		return;
+	}
+
+	auto CanStack = [&](FVector Base, float Scale, int32 Count, float Yaw)
+	{
+		for (int32 Index = 0; Index < Count; ++Index)
+		{
+			const float Z = 16.0f * Scale + Index * 34.0f * Scale;
+			Dress(Arena, CanBottom, Base + FVector(0, 0, Z), Scale, FRotator(0, Yaw + Index * 17.0f, 0));
+			if (Index == Count - 1)
+			{
+				Dress(Arena, CanTop, Base + FVector(8.0f * Scale, -6.0f * Scale, Z + 22.0f * Scale),
+					Scale, FRotator(8.0f, Yaw + 40.0f, 12.0f));
+			}
+		}
+	};
+	auto StandingReel = [&](FVector Location, float Scale, float Yaw)
+	{
+		Dress(Arena, Reel, Location, Scale, FRotator(90.0f, Yaw, 0));
+	};
+	auto FlatReel = [&](FVector Location, float Scale, float Yaw)
+	{
+		Dress(Arena, Reel, Location, Scale, FRotator(0, Yaw, 0));
+		Dress(Arena, Tape, Location + FVector(0, 0, 12.0f * Scale), Scale * 0.92f, FRotator(0, Yaw + 25.0f, 0));
+	};
+
+	// Sideline clusters just outside the teal border.
+	for (double Side : {-1.0, 1.0})
+	{
+		CanStack(FVector(-420, Side * 1085, 0), 0.52f, 3, Side * 20.0f);
+		CanStack(FVector(-180, Side * 1110, 0), 0.44f, 2, Side * -35.0f);
+		CanStack(FVector(210, Side * 1095, 0), 0.48f, 2, Side * 55.0f);
+		StandingReel(FVector(-300, Side * 1060, 95 * 0.58f), 0.58f, Side > 0 ? 12.0f : -18.0f);
+		StandingReel(FVector(40, Side * 1075, 95 * 0.50f), 0.50f, Side > 0 ? -40.0f : 55.0f);
+		StandingReel(FVector(340, Side * 1055, 95 * 0.62f), 0.62f, Side > 0 ? 70.0f : -65.0f);
+		FlatReel(FVector(-70, Side * 1145, 14 * 0.40f), 0.40f, Side * 18.0f);
+		FlatReel(FVector(480, Side * 1120, 14 * 0.36f), 0.36f, Side * -50.0f);
+		Dress(Arena, CanTop, FVector(-510, Side * 1040, 12 * 0.42f), 0.42f, FRotator(0, Side * 80.0f, 0));
+		Dress(Arena, Tape, FVector(120, Side * 1160, 11 * 0.34f), 0.34f, FRotator(0, Side * 110.0f, 0));
+
+		// Soft cases and cable spools between the lights.
+		Prop(Arena, EShape::Box, FVector(-250, Side * 1180, 28), FVector(110, 64, 54), Ink, FRotator(0, Side * 12, 0));
+		Prop(Arena, EShape::Box, FVector(-250, Side * 1180, 58), FVector(104, 58, 8), Steel);
+		Prop(Arena, EShape::Cylinder, FVector(160, Side * 1205, 42), FVector(70, 70, 84), Sprocket);
+		Prop(Arena, EShape::Cylinder, FVector(160, Side * 1205, 88), FVector(28, 28, 18), Steel);
+		Prop(Arena, EShape::Box, FVector(430, Side * 1175, 22), FVector(88, 52, 42), Ink, FRotator(0, Side * -18, 0));
+	}
+
+	// Foreground apron (camera side): keep low so it frames the deck.
+	CanStack(FVector(-690, -420, 0), 0.40f, 2, -25.0f);
+	CanStack(FVector(-705, 380, 0), 0.38f, 2, 40.0f);
+	FlatReel(FVector(-660, -120, 12), 0.34f, 15.0f);
+	FlatReel(FVector(-675, 160, 12), 0.32f, -55.0f);
+	StandingReel(FVector(-640, 520, 78), 0.46f, 28.0f);
+	Dress(Arena, CanTop, FVector(-650, -560, 10), 0.36f, FRotator(12, -30, 8));
+	Prop(Arena, EShape::Box, FVector(-720, 0, 18), FVector(46, 260, 8), Sprocket, FRotator(0, 6, 0));
+	Prop(Arena, EShape::Box, FVector(-730, -250, 24), FVector(70, 48, 36), Ink, FRotator(0, -12, 0));
+	Prop(Arena, EShape::Box, FVector(-730, 250, 24), FVector(64, 44, 36), Ink, FRotator(0, 16, 0));
+
+	// Background against the tower wall: denser reel dumps and open cans.
+	CanStack(FVector(640, -620, 0), 0.55f, 3, 10.0f);
+	CanStack(FVector(655, -280, 0), 0.50f, 2, -20.0f);
+	CanStack(FVector(640, 120, 0), 0.58f, 3, 35.0f);
+	CanStack(FVector(650, 480, 0), 0.46f, 2, -45.0f);
+	StandingReel(FVector(610, -450, 110), 0.70f, 8.0f);
+	StandingReel(FVector(600, -80, 100), 0.64f, -22.0f);
+	StandingReel(FVector(615, 300, 115), 0.72f, 48.0f);
+	StandingReel(FVector(605, 620, 95), 0.58f, -70.0f);
+	FlatReel(FVector(680, -780, 16), 0.42f, 20.0f);
+	FlatReel(FVector(690, 740, 16), 0.40f, -35.0f);
+	Dress(Arena, Tape, FVector(670, -40, 14), 0.38f, FRotator(0, 70, 0));
+	Dress(Arena, CanTop, FVector(700, 220, 14), 0.44f, FRotator(-6, 15, 10));
+
+	// Film-strip ribbons and marker wedges around the apron.
+	for (int32 Index = 0; Index < 6; ++Index)
+	{
+		const double Y = Index * 280 - 700;
+		Prop(Arena, EShape::Box, FVector(-780, Y, 4), FVector(18, 210, 2.4), Gold, FRotator(0, Index % 2 ? 4 : -5, 0));
+		Prop(Arena, EShape::Box, FVector(780, Y, 4), FVector(18, 210, 2.4), Sprocket, FRotator(0, Index % 2 ? -3 : 6, 0));
+	}
+	for (double Side : {-1.0, 1.0})
+	{
+		Prop(Arena, EShape::Cone, FVector(-540, Side * 980, 28), FVector(28, 28, 56), Gold);
+		Prop(Arena, EShape::Cone, FVector(540, Side * 980, 28), FVector(28, 28, 56), Red);
+		Prop(Arena, EShape::Box, FVector(Side * 20, Side * 1240, 36), FVector(150, 40, 70), Ink, FRotator(0, 90, 0));
+		Prop(Arena, EShape::Cylinder, FVector(Side * 280, Side * 1230, 55), FVector(54, 54, 110), Steel);
+	}
+
+	// Simple camera bodies on sticks just off the short ends.
+	for (double Side : {-1.0, 1.0})
+	{
+		USceneComponent* Camera = Group(Arena, FVector(Side * 20, Side * 1280, 0));
+		Prop(Camera, EShape::Cylinder, FVector(0, 0, 70), FVector(10, 10, 140), Steel);
+		Prop(Camera, EShape::Box, FVector(18, 0, 150), FVector(70, 42, 36), Ink, FRotator(0, 0, -12));
+		Prop(Camera, EShape::Cylinder, FVector(58, 0, 150), FVector(22, 22, 40), Steel, FRotator(0, 0, 90));
+		Prop(Camera, EShape::Box, FVector(18, 0, 128), FVector(40, 70, 8), Sprocket);
 	}
 }
 
