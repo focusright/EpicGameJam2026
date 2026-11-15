@@ -207,18 +207,7 @@ bool ADirectorsCutStage::Build()
 	BuildDirector();
 	BuildTitleDirector();
 	UStaticMesh* FilmPlane = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Plane.Plane"));
-	UMaterialInterface* Translucent = LoadObject<UMaterialInterface>(nullptr,
-		TEXT("/Engine/EngineMaterials/Widget3DPassThrough_Translucent.Widget3DPassThrough_Translucent"));
-	UMaterialInstanceDynamic* FilmTint = Translucent ? UMaterialInstanceDynamic::Create(Translucent, this) : nullptr;
-	if (FilmTint)
-	{
-		const FColor Smoke(18, 20, 23, 166);
-		const TConstArrayView64<uint8> Pixel(reinterpret_cast<const uint8*>(&Smoke), sizeof(FColor));
-		UTexture2D* Texture = UTexture2D::CreateTransient(1, 1, PF_B8G8R8A8, NAME_None, Pixel);
-		Texture->UpdateResource();
-		FilmTint->SetTextureParameterValue(TEXT("SlateUI"), Texture);
-		FilmTint->SetScalarParameterValue(TEXT("OpacityFromTexture"), 1.0f);
-	}
+	UMaterialInterface* FilmTint = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Props/FilmEnemy/M_FilmStock.M_FilmStock"));
 	for (int32 Index = 0; Index < ReelSize; ++Index)
 	{
 		BuildEnemy(Index, FilmPlane, FilmTint);
