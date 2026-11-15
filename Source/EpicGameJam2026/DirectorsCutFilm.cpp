@@ -5,6 +5,8 @@
 #include "Components/PoseableMeshComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/SkeletalMesh.h"
+#include "Engine/StaticMesh.h"
+#include "Materials/MaterialInterface.h"
 
 using namespace DirectorsCut;
 
@@ -47,7 +49,70 @@ void ADirectorsCutStage::BuildCity()
 {
 	Prop(City, EShape::Box, FVector(0, 0, -110), FVector(14500, 13700, 200), Asphalt);
 	FRandomStream Random(8415);
+	FRandomStream FacadeRandom(1745);
 	const FColor Walls[] = {FColor(65, 93, 106), FColor(90, 107, 109), FColor(111, 124, 126), FColor(51, 78, 95)};
+	const FColor UnlitWindows[] = {FColor(34, 63, 78), FColor(63, 101, 117)};
+	const FColor LitWindows[] = {FColor(234, 188, 111), FColor(168, 209, 218)};
+	UStaticMesh* GlassPlane = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Plane.Plane"));
+	UMaterialInterface* Glass = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Props/FilmEnemy/M_FilmStock.M_FilmStock"));
+
+	// Each façade has a different mix of occupied rooms, with smoked glass over the closest buildings.
+	const auto AddFacade = [&](USceneComponent* Parent, FVector Base, double Width, double Depth, double Height,
+		int32 Style, bool bGlass)
+	{
+		const double FloorSpacing = Style == 1 ? 59.0 : 70.0;
+		const double FirstFloor = 88.0;
+		const int32 Rows = FMath::Max(1, 1 + FMath::FloorToInt((Height - 32.0 - FirstFloor) / FloorSpacing));
+		const double PaneHeight = Style == 0 ? 31.0 : 42.0;
+		for (bool bXFace : {false, true})
+		{
+			const double Span = bXFace ? Depth : Width;
+			const double FaceOffset = (bXFace ? Width : Depth) / 2;
+			const int32 Columns = FMath::Max(2, FMath::RoundToInt(Span / (Style == 2 ? 84.0 : 66.0)));
+			const double Pitch = Span * 0.86 / Columns;
+			const double PaneWidth = Pitch * (Style == 2 ? 0.59 : 0.77);
+			for (double Side : {-1.0, 1.0})
+			{
+				const auto Position = [&](double Across, double Out, double Z)
+				{
+					return Base + (bXFace ? FVector(Side * (FaceOffset + Out), Across, Z)
+						: FVector(Across, Side * (FaceOffset + Out), Z));
+				};
+				const auto Size = [bXFace](double Across, double Out, double Z)
+				{
+					return bXFace ? FVector(Out, Across, Z) : FVector(Across, Out, Z);
+				};
+				for (int32 Column = 0; Column < Columns; ++Column)
+				{
+					const double Across = (Column - (Columns - 1) * 0.5) * Pitch;
+					const double GlazingHeight = (Rows - 1) * FloorSpacing + PaneHeight;
+					const double MiddleZ = FirstFloor + (Rows - 1) * FloorSpacing / 2;
+					Prop(Parent, EShape::Box, Position(Across, 1, MiddleZ), Size(PaneWidth + 7, 5, GlazingHeight + 10), Black);
+					for (int32 Row = 0; Row < Rows; ++Row)
+					{
+						const bool bLit = FacadeRandom.FRand() < (Style == 1 ? 0.40f : 0.26f);
+						const int32 ColorIndex = FacadeRandom.RandRange(0, 1);
+						Prop(Parent, EShape::Box, Position(Across, 4, FirstFloor + Row * FloorSpacing),
+							Size(PaneWidth, 5, PaneHeight), bLit ? LitWindows[ColorIndex] : UnlitWindows[ColorIndex]);
+					}
+					if (bGlass && Glass && GlassPlane)
+					{
+						UStaticMeshComponent* Pane = NewObject<UStaticMeshComponent>(this);
+						Pane->SetupAttachment(Parent);
+						Pane->SetStaticMesh(GlassPlane);
+						Pane->SetMaterial(0, Glass);
+						Pane->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+						Pane->SetCastShadow(false);
+						Pane->SetRelativeTransform(FTransform(FRotator(90, bXFace ? 0 : 90, 0),
+							Position(Across, 7, MiddleZ), FVector(GlazingHeight / 100, PaneWidth / 100, 1)));
+						Pane->RegisterComponent();
+					}
+				}
+				Prop(Parent, EShape::Box, Position(0, 2, 35), Size(Span * 0.55, 6, 48), Steel);
+				Prop(Parent, EShape::Box, Position(0, 12, 62), Size(Span * 0.62, 26, 9), Concrete);
+			}
+		}
+	};
 	for (int32 X = -5; X <= 5; ++X)
 	{
 		for (int32 Y = -5; Y <= 5; ++Y)
@@ -61,20 +126,27 @@ void ADirectorsCutStage::BuildCity()
 			const double Depth = Random.FRandRange(330, 610);
 			const double Height = Random.FRandRange(305, FMath::Abs(Y) <= 1 ? 660 : 1275);
 			const FColor Wall = Walls[Random.RandRange(0, UE_ARRAY_COUNT(Walls) - 1)];
+			const int32 Style = FMath::Abs(X * 2 + Y) % 3;
 			Prop(City, EShape::Box, Location + FVector(0, 0, 0), FVector(700, 680, 23), Concrete);
 			Prop(City, EShape::Box, Location + FVector(0, 0, Height / 2), FVector(Width, Depth, Height), Wall);
 			Prop(City, EShape::Box, Location + FVector(0, 0, Height + 11), FVector(Width + 25, Depth + 25, 22), Steel);
 			Prop(City, EShape::Box, Location + FVector(-Width * 0.16, 0, Height + 42), FVector(Width * 0.30, Depth * 0.51, 64), Wall);
-			for (double Floor = 95.0; Floor < Height - 30.0; Floor += 76.0)
+			AddFacade(City, Location, Width, Depth, Height, Style, FMath::Abs(Y) == 1 && FMath::Abs(X) <= 2);
+			if (Style == 0)
 			{
-				const FColor Window = Random.FRand() < 0.34f ? Lamp : Steel;
-				for (double Side : {-1.0, 1.0})
-				{
-					Prop(City, EShape::Box, Location + FVector(Side * (Width / 2 + 1), 0, Floor),
-						FVector(4, Depth * 0.86, 17), Window);
-					Prop(City, EShape::Box, Location + FVector(0, Side * (Depth / 2 + 1), Floor),
-						FVector(Width * 0.86, 4, 17), Window);
-				}
+				Prop(City, EShape::Cylinder, Location + FVector(Width * 0.26, 0, Height + 52), FVector(83, 83, 64), Steel);
+				Prop(City, EShape::Cylinder, Location + FVector(Width * 0.26, 0, Height + 87), FVector(93, 93, 8), Concrete);
+			}
+			else if (Style == 1)
+			{
+				Prop(City, EShape::Box, Location + FVector(-Width * 0.16, 0, Height + 95), FVector(9, 9, 79), Concrete);
+				Prop(City, EShape::Box, Location + FVector(-Width * 0.16, 0, Height + 119), FVector(7, 68, 7), Steel);
+			}
+			else
+			{
+				Prop(City, EShape::Box, Location + FVector(0, 0, Height + 27), FVector(Width + 30, Depth + 30, 13), Concrete);
+				Prop(City, EShape::Box, Location + FVector(Width * 0.25, Depth * 0.21, Height + 48),
+					FVector(Width * 0.20, Depth * 0.22, 40), Steel);
 			}
 		}
 	}
@@ -128,10 +200,7 @@ void ADirectorsCutStage::BuildCity()
 		USceneComponent* Building = Group(City, Location);
 		Shape(Building, EShape::Box, FVector(0, 0, Height / 2), FVector(136, 180, Height), Walls[Index % 4]);
 		Shape(Building, EShape::Box, FVector(0, 0, Height + 9), FVector(149, 193, 18), Concrete);
-		for (float Floor = 80; Floor < Height - 24; Floor += 65)
-		{
-			Shape(Building, EShape::Box, FVector(0, Side * -91, Floor), FVector(108, 4, 15), Lamp);
-		}
+		AddFacade(Building, FVector::ZeroVector, 136, 180, Height, Index % 3, true);
 		Buildings.Add({Building, Location, Time, Height});
 	}
 	for (int32 Index = 0; Index < UE_ARRAY_COUNT(Dust); ++Index)
