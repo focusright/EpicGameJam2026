@@ -77,7 +77,6 @@ void ADirectorsCutHUD::EnsureGrainTexture()
 	Texture->AddressX = TA_Wrap;
 	Texture->AddressY = TA_Wrap;
 	Texture->CompressionSettings = TC_VectorDisplacementmap;
-	Texture->MipGenSettings = TMGS_NoMipmaps;
 	Texture->NeverStream = true;
 
 	FTexture2DMipMap& Mip = Texture->GetPlatformData()->Mips[0];

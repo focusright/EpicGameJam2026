@@ -70,6 +70,7 @@ void ADirectorsCutController::SetCursorVisible(bool bVisible)
 {
 	bShowMouseCursor = bVisible;
 	bEnableClickEvents = bVisible;
+	bEnableMouseOverEvents = bVisible;
 	FInputModeGameAndUI Mode;
 	Mode.SetHideCursorDuringCapture(false);
 	Mode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
@@ -186,8 +187,13 @@ void ADirectorsCutGameMode::BeginPlay()
 	Super::BeginPlay();
 	Stage = GetWorld()->SpawnActor<ADirectorsCutStage>();
 	Camera = GetWorld()->SpawnActor<ACameraActor>();
+	if (ADirectorsCutController* Controller = Cast<ADirectorsCutController>(GetWorld()->GetFirstPlayerController()))
+	{
+		Controller->SetCursorVisible(true);
+	}
 	if (!Stage || !Camera || !Stage->Build())
 	{
+		UE_LOG(LogTemp, Error, TEXT("Director's Cut stage failed to build; title input stays enabled for debugging."));
 		SetActorTickEnabled(false);
 		return;
 	}
@@ -316,7 +322,7 @@ void ADirectorsCutGameMode::StartTake()
 
 void ADirectorsCutGameMode::Confirm()
 {
-	if (!IsActorTickEnabled())
+	if (!Stage || !Camera || !IsActorTickEnabled())
 	{
 		return;
 	}

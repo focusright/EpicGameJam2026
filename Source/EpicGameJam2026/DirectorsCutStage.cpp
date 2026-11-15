@@ -178,11 +178,18 @@ bool ADirectorsCutStage::Build()
 	};
 	GodzillaMesh = LoadObject<USkeletalMesh>(nullptr, TEXT("/Game/Godzilla/Meshes/Godzilla.Godzilla"));
 	PigmentMaterial = LoadObject<UMaterialInterface>(nullptr, TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial"));
-	LightMaterial = LoadObject<UMaterialInterface>(nullptr, TEXT("/Engine/EngineMaterials/EmissiveTexturedMaterial.EmissiveTexturedMaterial"));
+	// EmissiveTexturedMaterial is often excluded from cooks; prefer a runtime-safe emissive fallback.
+	LightMaterial = LoadObject<UMaterialInterface>(nullptr, TEXT("/Engine/EngineMaterials/EmissiveMeshMaterial.EmissiveMeshMaterial"));
+	if (!LightMaterial)
+	{
+		LightMaterial = PigmentMaterial;
+	}
 	if (!GodzillaMesh || !PigmentMaterial || !LightMaterial ||
 		Shapes.ContainsByPredicate([](const TObjectPtr<UStaticMesh>& Mesh) { return !Mesh; }))
 	{
-		UE_LOG(LogTemp, Error, TEXT("Director's Cut could not load the required stage assets."));
+		UE_LOG(LogTemp, Error, TEXT("Director's Cut could not load the required stage assets. Godzilla=%d Pigment=%d Light=%d Shapes=%d"),
+			GodzillaMesh != nullptr, PigmentMaterial != nullptr, LightMaterial != nullptr,
+			!Shapes.ContainsByPredicate([](const TObjectPtr<UStaticMesh>& Mesh) { return !Mesh; }));
 		return false;
 	}
 	for (TActorIterator<AStaticMeshActor> It(GetWorld()); It; ++It)

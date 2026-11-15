@@ -17,6 +17,22 @@
 	],
 	"Plugins": [
 		{
+			"Name": "Landmass",
+			"Enabled": false
+		},
+		{
+			"Name": "Water",
+			"Enabled": false
+		},
+		{
+			"Name": "Buoyancy",
+			"Enabled": false
+		},
+		{
+			"Name": "Volumetrics",
+			"Enabled": false
+		},
+		{
 			"Name": "ModelingToolsEditorMode",
 			"Enabled": true,
 			"TargetAllowList": [
