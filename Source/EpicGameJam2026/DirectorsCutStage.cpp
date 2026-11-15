@@ -242,16 +242,84 @@ void ADirectorsCutStage::BuildArena()
 {
 	constexpr double DeckX = 1250.0;
 	constexpr double DeckY = 1970.0;
+	const FColor LabFloor(72, 74, 76);
+	const FColor LabTileA(84, 86, 88);
+	const FColor LabTileB(64, 66, 68);
+	const FColor BenchMetal(32, 36, 40);
+	const FColor BenchTop(24, 28, 32);
+	const FColor Aisle(58, 60, 62);
+
 	Prop(Arena, EShape::Box, FVector(0, 0, -29), FVector(7000, 7400, 48), Ink);
 	Prop(Arena, EShape::Box, FVector(0, 0, -9), FVector(DeckX, DeckY, 18), Floor);
+
+	// Industrial editing-room floor: dark linoleum with a lighter center aisle.
+	Prop(Arena, EShape::Box, FVector(0, 0, 0.4), FVector(1160, 1840, 1.0), LabFloor);
 	for (int32 X = -5; X <= 5; ++X)
 	{
-		Prop(Arena, EShape::Box, FVector(X * 100, 0, 0.3), FVector(1.2, 1925, 0.6), FColor(77, 84, 87));
+		for (int32 Y = -9; Y <= 9; ++Y)
+		{
+			const FColor Tile = ((X + Y) & 1) ? LabTileA : LabTileB;
+			Prop(Arena, EShape::Box, FVector(X * 100.0, Y * 100.0, 0.7), FVector(96, 96, 0.8), Tile);
+		}
 	}
-	for (int32 Y = -9; Y <= 9; ++Y)
+	Prop(Arena, EShape::Box, FVector(0, 0, 1.0), FVector(420, 1400, 0.9), Aisle);
+	Prop(Arena, EShape::Box, FVector(0, 0, 1.0), FVector(900, 360, 0.9), Aisle);
+
+	// Editing benches along both long walls (inside the teal).
+	auto EditingBench = [&](FVector Origin, float Yaw)
 	{
-		Prop(Arena, EShape::Box, FVector(0, Y * 100, 0.3), FVector(1205, 1.2, 0.6), FColor(77, 84, 87));
+		USceneComponent* Bench = Group(Arena, Origin);
+		Bench->SetRelativeRotation(FRotator(0, Yaw, 0));
+		Prop(Bench, EShape::Box, FVector(0, 0, 38), FVector(210, 78, 76), BenchMetal);
+		Prop(Bench, EShape::Box, FVector(0, 0, 78), FVector(220, 88, 8), BenchTop);
+		Prop(Bench, EShape::Box, FVector(-70, 0, 18), FVector(18, 18, 36), Ink);
+		Prop(Bench, EShape::Box, FVector(70, 0, 18), FVector(18, 18, 36), Ink);
+		// Built-in lightbox.
+		Shape(Bench, EShape::Box, FVector(-20, 0, 84), FVector(70, 48, 4), FColor(255, 246, 220), FRotator::ZeroRotator, true);
+		PointLight(Bench, FVector(-20, 0, 110), FColor(255, 244, 210), 250, 180);
+		// Rewind spindles and roller bank.
+		Prop(Bench, EShape::Cylinder, FVector(55, -18, 108), FVector(10, 10, 52), Steel);
+		Prop(Bench, EShape::Cylinder, FVector(55, 18, 108), FVector(10, 10, 52), Steel);
+		Prop(Bench, EShape::Cylinder, FVector(55, -18, 136), FVector(34, 34, 8), Steel);
+		Prop(Bench, EShape::Cylinder, FVector(55, 18, 136), FVector(34, 34, 8), Steel);
+		for (int32 Roller = 0; Roller < 4; ++Roller)
+		{
+			Prop(Bench, EShape::Cylinder, FVector(-55.0 + Roller * 18.0, 28, 96), FVector(8, 8, 22), Steel,
+				FRotator(0, 0, 90));
+		}
+		Prop(Bench, EShape::Box, FVector(20, 28, 92), FVector(90, 10, 6), Sprocket);
+	};
+
+	for (double Side : {-1.0, 1.0})
+	{
+		for (int32 Index = 0; Index < 5; ++Index)
+		{
+			const double X = -360.0 + Index * 180.0;
+			EditingBench(FVector(X, Side * 780, 0), Side > 0 ? 180.0f : 0.0f);
+		}
+		// Short-end benches near camera and backdrop.
+		EditingBench(FVector(Side * 430, -520, 0), 90.0f);
+		EditingBench(FVector(Side * 430, 520, 0), -90.0f);
 	}
+
+	// Rolling scrap bins in the aisles between benches.
+	for (double Side : {-1.0, 1.0})
+	{
+		for (int32 Index = 0; Index < 3; ++Index)
+		{
+			const double X = -250.0 + Index * 250.0;
+			Prop(Arena, EShape::Cylinder, FVector(X, Side * 620, 36), FVector(70, 70, 72), Ink);
+			Prop(Arena, EShape::Cylinder, FVector(X, Side * 620, 74), FVector(74, 74, 6), Steel);
+			for (double Wheel : {-22.0, 22.0})
+			{
+				Prop(Arena, EShape::Cylinder, FVector(X + Wheel, Side * 620 - 28, 10), FVector(14, 14, 8), Steel,
+					FRotator(0, 0, 90));
+				Prop(Arena, EShape::Cylinder, FVector(X + Wheel, Side * 620 + 28, 10), FVector(14, 14, 8), Steel,
+					FRotator(0, 0, 90));
+			}
+		}
+	}
+
 	for (double Side : {-1.0, 1.0})
 	{
 		Prop(Arena, EShape::Box, FVector(0, Side * 936, 2), FVector(1185, 8, 4), Teal);
@@ -324,77 +392,86 @@ void ADirectorsCutStage::BuildArenaDressing()
 		Dress(Arena, Reel, Location, Scale, FRotator(0, Yaw, 0));
 		Dress(Arena, Tape, Location + FVector(0, 0, 12.0f * Scale), Scale * 0.92f, FRotator(0, Yaw + 25.0f, 0));
 	};
+	auto ArchiveCluster = [&](FVector Origin, float Scale, int32 Columns, int32 MaxHeight)
+	{
+		for (int32 Column = 0; Column < Columns; ++Column)
+		{
+			const float Angle = Column * 47.0f;
+			const float Radius = 28.0f * Scale * (0.35f + (Column % 3) * 0.35f);
+			const FVector Offset(FMath::Cos(FMath::DegreesToRadians(Angle)) * Radius,
+				FMath::Sin(FMath::DegreesToRadians(Angle)) * Radius, 0);
+			CanStack(Origin + Offset, Scale * (0.92f + (Column % 2) * 0.08f),
+				2 + (Column * 3 + MaxHeight) % MaxHeight, Angle);
+		}
+	};
 
-	// Sideline clusters just outside the teal border.
+	// Dense can stacks on every editing bench (matches the archive photos).
 	for (double Side : {-1.0, 1.0})
 	{
-		CanStack(FVector(-420, Side * 1085, 0), 0.52f, 3, Side * 20.0f);
-		CanStack(FVector(-180, Side * 1110, 0), 0.44f, 2, Side * -35.0f);
-		CanStack(FVector(210, Side * 1095, 0), 0.48f, 2, Side * 55.0f);
-		StandingReel(FVector(-300, Side * 1060, 95 * 0.58f), 0.58f, Side > 0 ? 12.0f : -18.0f);
-		StandingReel(FVector(40, Side * 1075, 95 * 0.50f), 0.50f, Side > 0 ? -40.0f : 55.0f);
-		StandingReel(FVector(340, Side * 1055, 95 * 0.62f), 0.62f, Side > 0 ? 70.0f : -65.0f);
-		FlatReel(FVector(-70, Side * 1145, 14 * 0.40f), 0.40f, Side * 18.0f);
-		FlatReel(FVector(480, Side * 1120, 14 * 0.36f), 0.36f, Side * -50.0f);
-		Dress(Arena, CanTop, FVector(-510, Side * 1040, 12 * 0.42f), 0.42f, FRotator(0, Side * 80.0f, 0));
-		Dress(Arena, Tape, FVector(120, Side * 1160, 11 * 0.34f), 0.34f, FRotator(0, Side * 110.0f, 0));
+		for (int32 Index = 0; Index < 5; ++Index)
+		{
+			const double X = -360.0 + Index * 180.0;
+			const float BenchZ = 86.0f;
+			CanStack(FVector(X + 55, Side * 780, BenchZ), 0.28f, 4 + (Index % 3), Side * 15.0f + Index * 8.0f);
+			CanStack(FVector(X + 20, Side * 780 + Side * 18, BenchZ), 0.24f, 3, -Index * 12.0f);
+			FlatReel(FVector(X - 45, Side * 780, BenchZ + 8), 0.22f, Index * 20.0f);
+			if (Index % 2 == 0)
+			{
+				StandingReel(FVector(X - 70, Side * 800, BenchZ + 42), 0.26f, Side > 0 ? 10.0f : -15.0f);
+			}
+		}
+		CanStack(FVector(Side * 430, -520, 86), 0.26f, 5, 20.0f);
+		CanStack(FVector(Side * 430, 520, 86), 0.26f, 4, -30.0f);
+		FlatReel(FVector(Side * 400, -500, 94), 0.20f, 40.0f);
+		FlatReel(FVector(Side * 400, 500, 94), 0.20f, -25.0f);
+	}
 
-		// Soft cases and cable spools between the lights.
+	// Archive islands inside the play field, leaving a clear center aisle for combat.
+	ArchiveCluster(FVector(-360, -520, 0), 0.34f, 5, 6);
+	ArchiveCluster(FVector(360, -480, 0), 0.32f, 4, 5);
+	ArchiveCluster(FVector(-340, 500, 0), 0.33f, 5, 6);
+	ArchiveCluster(FVector(350, 460, 0), 0.31f, 4, 5);
+	ArchiveCluster(FVector(-420, 40, 0), 0.30f, 4, 5);
+	ArchiveCluster(FVector(420, -60, 0), 0.30f, 4, 5);
+	CanStack(FVector(-200, -700, 0), 0.36f, 7, 8.0f);
+	CanStack(FVector(180, -720, 0), 0.34f, 6, -12.0f);
+	CanStack(FVector(-160, 700, 0), 0.35f, 7, 22.0f);
+	CanStack(FVector(200, 680, 0), 0.33f, 6, -18.0f);
+	CanStack(FVector(0, -780, 0), 0.38f, 5, 0.0f);
+	CanStack(FVector(0, 780, 0), 0.38f, 5, 180.0f);
+	StandingReel(FVector(-280, -600, 70), 0.42f, 25.0f);
+	StandingReel(FVector(300, -580, 65), 0.40f, -30.0f);
+	StandingReel(FVector(-300, 580, 72), 0.44f, 40.0f);
+	StandingReel(FVector(280, 560, 68), 0.41f, -55.0f);
+
+	// Loose lids and tape rolls on the aisle edges.
+	Dress(Arena, CanTop, FVector(-120, -400, 10), 0.30f, FRotator(12, 20, 8));
+	Dress(Arena, CanTop, FVector(140, 380, 10), 0.28f, FRotator(-8, -40, 6));
+	Dress(Arena, Tape, FVector(-80, 240, 9), 0.26f, FRotator(0, 70, 0));
+	Dress(Arena, Tape, FVector(90, -220, 9), 0.24f, FRotator(0, -55, 0));
+	FlatReel(FVector(-40, 0, 10), 0.28f, 15.0f);
+	FlatReel(FVector(60, 120, 10), 0.22f, -40.0f);
+
+	// Outside-border storage walls: taller archival stacks like the photos.
+	for (double Side : {-1.0, 1.0})
+	{
+		for (int32 Index = 0; Index < 6; ++Index)
+		{
+			const double X = -450.0 + Index * 170.0;
+			ArchiveCluster(FVector(X, Side * 1100, 0), 0.40f, 4, 7);
+		}
+		StandingReel(FVector(-300, Side * 1060, 95 * 0.58f), 0.58f, Side > 0 ? 12.0f : -18.0f);
+		StandingReel(FVector(340, Side * 1055, 95 * 0.62f), 0.62f, Side > 0 ? 70.0f : -65.0f);
 		Prop(Arena, EShape::Box, FVector(-250, Side * 1180, 28), FVector(110, 64, 54), Ink, FRotator(0, Side * 12, 0));
 		Prop(Arena, EShape::Box, FVector(-250, Side * 1180, 58), FVector(104, 58, 8), Steel);
 		Prop(Arena, EShape::Cylinder, FVector(160, Side * 1205, 42), FVector(70, 70, 84), Sprocket);
 		Prop(Arena, EShape::Cylinder, FVector(160, Side * 1205, 88), FVector(28, 28, 18), Steel);
-		Prop(Arena, EShape::Box, FVector(430, Side * 1175, 22), FVector(88, 52, 42), Ink, FRotator(0, Side * -18, 0));
 	}
-
-	// Foreground apron (camera side): keep low so it frames the deck.
-	CanStack(FVector(-690, -420, 0), 0.40f, 2, -25.0f);
-	CanStack(FVector(-705, 380, 0), 0.38f, 2, 40.0f);
-	FlatReel(FVector(-660, -120, 12), 0.34f, 15.0f);
-	FlatReel(FVector(-675, 160, 12), 0.32f, -55.0f);
-	StandingReel(FVector(-640, 520, 78), 0.46f, 28.0f);
-	Dress(Arena, CanTop, FVector(-650, -560, 10), 0.36f, FRotator(12, -30, 8));
-	Prop(Arena, EShape::Box, FVector(-720, 0, 18), FVector(46, 260, 8), Sprocket, FRotator(0, 6, 0));
-	Prop(Arena, EShape::Box, FVector(-730, -250, 24), FVector(70, 48, 36), Ink, FRotator(0, -12, 0));
-	Prop(Arena, EShape::Box, FVector(-730, 250, 24), FVector(64, 44, 36), Ink, FRotator(0, 16, 0));
-
-	// Background against the tower wall: denser reel dumps and open cans.
-	CanStack(FVector(640, -620, 0), 0.55f, 3, 10.0f);
-	CanStack(FVector(655, -280, 0), 0.50f, 2, -20.0f);
-	CanStack(FVector(640, 120, 0), 0.58f, 3, 35.0f);
-	CanStack(FVector(650, 480, 0), 0.46f, 2, -45.0f);
-	StandingReel(FVector(610, -450, 110), 0.70f, 8.0f);
-	StandingReel(FVector(600, -80, 100), 0.64f, -22.0f);
-	StandingReel(FVector(615, 300, 115), 0.72f, 48.0f);
-	StandingReel(FVector(605, 620, 95), 0.58f, -70.0f);
-	FlatReel(FVector(680, -780, 16), 0.42f, 20.0f);
-	FlatReel(FVector(690, 740, 16), 0.40f, -35.0f);
-	Dress(Arena, Tape, FVector(670, -40, 14), 0.38f, FRotator(0, 70, 0));
-	Dress(Arena, CanTop, FVector(700, 220, 14), 0.44f, FRotator(-6, 15, 10));
-
-	// Film-strip ribbons and marker wedges around the apron.
-	for (int32 Index = 0; Index < 6; ++Index)
+	for (int32 Index = 0; Index < 5; ++Index)
 	{
-		const double Y = Index * 280 - 700;
-		Prop(Arena, EShape::Box, FVector(-780, Y, 4), FVector(18, 210, 2.4), Gold, FRotator(0, Index % 2 ? 4 : -5, 0));
-		Prop(Arena, EShape::Box, FVector(780, Y, 4), FVector(18, 210, 2.4), Sprocket, FRotator(0, Index % 2 ? -3 : 6, 0));
-	}
-	for (double Side : {-1.0, 1.0})
-	{
-		Prop(Arena, EShape::Cone, FVector(-540, Side * 980, 28), FVector(28, 28, 56), Gold);
-		Prop(Arena, EShape::Cone, FVector(540, Side * 980, 28), FVector(28, 28, 56), Red);
-		Prop(Arena, EShape::Box, FVector(Side * 20, Side * 1240, 36), FVector(150, 40, 70), Ink, FRotator(0, 90, 0));
-		Prop(Arena, EShape::Cylinder, FVector(Side * 280, Side * 1230, 55), FVector(54, 54, 110), Steel);
-	}
-
-	// Simple camera bodies on sticks just off the short ends.
-	for (double Side : {-1.0, 1.0})
-	{
-		USceneComponent* Camera = Group(Arena, FVector(Side * 20, Side * 1280, 0));
-		Prop(Camera, EShape::Cylinder, FVector(0, 0, 70), FVector(10, 10, 140), Steel);
-		Prop(Camera, EShape::Box, FVector(18, 0, 150), FVector(70, 42, 36), Ink, FRotator(0, 0, -12));
-		Prop(Camera, EShape::Cylinder, FVector(58, 0, 150), FVector(22, 22, 40), Steel, FRotator(0, 0, 90));
-		Prop(Camera, EShape::Box, FVector(18, 0, 128), FVector(40, 70, 8), Sprocket);
+		const double Y = Index * 280 - 560;
+		ArchiveCluster(FVector(660, Y, 0), 0.42f, 4, 8);
+		ArchiveCluster(FVector(-700, Y, 0), 0.36f, 3, 5);
 	}
 }
 
