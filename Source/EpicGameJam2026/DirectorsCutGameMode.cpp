@@ -4,15 +4,19 @@
 #include "Components/AudioComponent.h"
 #include "DirectorsCutHUD.h"
 #include "DirectorsCutStage.h"
+#include "DLSSLibrary.h"
 #include "Components/LightComponent.h"
 #include "Camera/CameraComponent.h"
 #include "Engine/DirectionalLight.h"
 #include "Engine/Engine.h"
 #include "Engine/Texture2D.h"
 #include "EngineUtils.h"
+#include "HAL/IConsoleManager.h"
 #include "InputCoreTypes.h"
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetSystemLibrary.h"
+#include "Misc/CommandLine.h"
+#include "Misc/Parse.h"
 #include "Sound/SoundWaveProcedural.h"
 
 namespace DirectorsCut
@@ -57,6 +61,8 @@ void ADirectorsCutController::SetupInputComponent()
 	InputComponent->BindKey(EKeys::Enter, IE_Pressed, this, &ADirectorsCutController::Confirm);
 	FInputKeyBinding& PauseBind = InputComponent->BindKey(EKeys::P, IE_Pressed, this, &ADirectorsCutController::TogglePause);
 	PauseBind.bExecuteWhenPaused = true;
+	FInputKeyBinding& DLSSBind = InputComponent->BindKey(EKeys::L, IE_Pressed, this, &ADirectorsCutController::ToggleDLSS);
+	DLSSBind.bExecuteWhenPaused = true;
 	FInputKeyBinding& QuitBind = InputComponent->BindKey(EKeys::Escape, IE_Pressed, this, &ADirectorsCutController::QuitGame);
 	QuitBind.bExecuteWhenPaused = true;
 }
@@ -169,6 +175,18 @@ void ADirectorsCutController::TogglePause()
 	}
 }
 
+void ADirectorsCutController::ToggleDLSS()
+{
+	if (ADirectorsCutGameMode* Game = GetCutGame())
+	{
+		const TCHAR* Status = Game->ToggleDLSS();
+		if (ADirectorsCutHUD* HUD = GetHUD<ADirectorsCutHUD>())
+		{
+			HUD->ShowDLSSStatus(Status);
+		}
+	}
+}
+
 void ADirectorsCutController::QuitGame()
 {
 	UKismetSystemLibrary::QuitGame(this, this, EQuitPreference::Quit, false);
@@ -185,6 +203,12 @@ ADirectorsCutGameMode::ADirectorsCutGameMode()
 void ADirectorsCutGameMode::BeginPlay()
 {
 	Super::BeginPlay();
+
+	if (!IsRunningDedicatedServer() && !FParse::Param(FCommandLine::Get(), TEXT("NoDLSS")) &&
+		UDLSSLibrary::IsDLSSModeSupported(UDLSSMode::Quality))
+	{
+		SetDLSSEnabled(true);
+	}
 	Stage = GetWorld()->SpawnActor<ADirectorsCutStage>();
 	Camera = GetWorld()->SpawnActor<ACameraActor>();
 	if (ADirectorsCutController* Controller = Cast<ADirectorsCutController>(GetWorld()->GetFirstPlayerController()))
@@ -204,6 +228,33 @@ void ADirectorsCutGameMode::BeginPlay()
 	}
 	SetPhase(EPhase::Title);
 	Stage->SetArenaCamera(*Camera, 0.0f, true);
+}
+
+const TCHAR* ADirectorsCutGameMode::ToggleDLSS()
+{
+	if (!UDLSSLibrary::IsDLSSModeSupported(UDLSSMode::Quality))
+	{
+		return TEXT("DLSS unavailable");
+	}
+
+	SetDLSSEnabled(!UDLSSLibrary::IsDLSSEnabled());
+	return UDLSSLibrary::IsDLSSEnabled() ? TEXT("DLSS on - Quality") : TEXT("DLSS off");
+}
+
+void ADirectorsCutGameMode::SetDLSSEnabled(bool bEnabled)
+{
+	IConsoleVariable* ScreenPercentage = IConsoleManager::Get().FindConsoleVariable(TEXT("r.ScreenPercentage"));
+	if (bEnabled && ScreenPercentage && !ScreenPercentageBeforeDLSS.IsSet())
+	{
+		ScreenPercentageBeforeDLSS = ScreenPercentage->GetFloat();
+	}
+
+	UDLSSLibrary::SetDLSSMode(this, bEnabled ? UDLSSMode::Quality : UDLSSMode::Off);
+	if (!bEnabled && ScreenPercentage && ScreenPercentageBeforeDLSS.IsSet())
+	{
+		ScreenPercentage->SetWithCurrentPriority(ScreenPercentageBeforeDLSS.GetValue());
+		ScreenPercentageBeforeDLSS.Reset();
+	}
 }
 
 void ADirectorsCutGameMode::SetPhase(EPhase NewPhase)

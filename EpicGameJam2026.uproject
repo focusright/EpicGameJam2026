@@ -16,6 +16,7 @@
 		}
 	],
 	"Plugins": [
+		{ "Name": "DLSS", "Enabled": true },
 		{
 			"Name": "Landmass",
 			"Enabled": false

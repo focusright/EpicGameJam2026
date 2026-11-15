@@ -112,6 +112,12 @@ void ADirectorsCutHUD::DrawFilmGrain(float X, float Y, float W, float H, float O
 	Canvas->DrawItem(Tile);
 }
 
+void ADirectorsCutHUD::ShowDLSSStatus(const TCHAR* Status)
+{
+	DLSSStatus = Status;
+	DLSSStatusUntil = GetWorld()->GetRealTimeSeconds() + 3.0;
+}
+
 void ADirectorsCutHUD::DrawHUD()
 {
 	Super::DrawHUD();
@@ -148,6 +154,12 @@ void ADirectorsCutHUD::DrawHUD()
 	if (UGameplayStatics::IsGamePaused(GetWorld()))
 	{
 		DrawPaused();
+	}
+	if (GetWorld()->GetRealTimeSeconds() < DLSSStatusUntil)
+	{
+		const float X = Width - 236 * UI;
+		Box(X, 18 * UI, 218 * UI, 36 * UI, Void);
+		Text(DLSSStatus, X + 109 * UI, 26 * UI, 14, Paper, true, 0.5f, true);
 	}
 }
 
@@ -196,6 +208,7 @@ void ADirectorsCutHUD::DrawTitle(bool bStarting)
 	Text(TEXT("As the movie director, where you point matters!"), Left, GapCenter - 13 * UI, 16, Muted);
 	Text(TEXT("WASD  MOVE     CLICK  SLICE     SHIFT  DODGE     P  PAUSE     ESC  QUIT"),
 		Left, Height - 61 * UI, 12, Muted, false, 0, true);
+	Text(TEXT("L  TOGGLE DLSS"), Left, Height - 37 * UI, 12, Muted, false, 0, true);
 }
 
 void ADirectorsCutHUD::DrawPaused()

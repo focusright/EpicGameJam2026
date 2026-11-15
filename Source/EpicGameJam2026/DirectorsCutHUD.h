@@ -17,6 +17,7 @@ public:
 	ADirectorsCutHUD();
 	virtual void DrawHUD() override;
 	virtual void NotifyHitBoxClick(FName BoxName) override;
+	void ShowDLSSStatus(const TCHAR* Status);
 
 private:
 	UPROPERTY()
@@ -31,6 +32,8 @@ private:
 	float Width = 0.0f;
 	float Height = 0.0f;
 	float UI = 1.0f;
+	FString DLSSStatus;
+	double DLSSStatusUntil = 0.0;
 
 	void Box(float X, float Y, float W, float H, FColor Color);
 	void Text(const FString& Value, float X, float Y, float Size, FColor Color, bool bHeavy = false,

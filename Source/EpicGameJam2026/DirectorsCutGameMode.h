@@ -51,6 +51,7 @@ private:
 	void Dodge();
 	void Confirm();
 	void TogglePause();
+	void ToggleDLSS();
 	void QuitGame();
 };
 
@@ -66,6 +67,7 @@ public:
 	void Slash(bool bAimWithMouse);
 	void Dodge();
 	void Confirm();
+	const TCHAR* ToggleDLSS();
 	DirectorsCut::EPhase GetPhase() const { return Phase; }
 	float GetPhaseTime() const { return PhaseTime; }
 	int32 GetFilmShot() const { return FilmShot; }
@@ -119,7 +121,9 @@ private:
 	bool bFilmActionPlayed = false;
 	int32 PaidBags = 0;
 	float StoredDirectionalIntensity = -1.0f;
+	TOptional<float> ScreenPercentageBeforeDLSS;
 
+	void SetDLSSEnabled(bool bEnabled);
 	void SetPhase(DirectorsCut::EPhase NewPhase);
 	void SetReelPlaybackEffects(bool bReelPlaying);
 	void StartTake();
