@@ -51,6 +51,7 @@ namespace
 	const TCHAR* OpeningAdventurePath = TEXT("/Game/audio/opening-adventure.opening-adventure");
 	const TCHAR* GameplayMusicPath = TEXT("/Game/audio/gameplay.gameplay");
 	const TCHAR* ClosingAdventurePath = TEXT("/Game/audio/closing-adventure.closing-adventure");
+	const TCHAR* DeathScreamPath = TEXT("/Game/audio/aoe2-female-sound-death-5.aoe2-female-sound-death-5");
 
 	FVector2D ClampToArena(FVector2D Point, float Margin = 0.0f)
 	{
@@ -662,6 +663,14 @@ void ADirectorsCutGameMode::UpdateEnemy(int32 Index, float DeltaSeconds)
 			SlashTime = 0.0f;
 			SetPhase(EPhase::Wrap);
 			PlayCue(ECue::Impact);
+			if (USoundBase* Scream = LoadObject<USoundBase>(nullptr, DeathScreamPath))
+			{
+				UGameplayStatics::SpawnSound2D(this, Scream, 2.35f);
+			}
+			else
+			{
+				UE_LOG(LogTemp, Warning, TEXT("Director's Cut could not load death scream %s"), DeathScreamPath);
+			}
 		}
 		else if (Enemy.Time >= LungeDuration)
 		{
