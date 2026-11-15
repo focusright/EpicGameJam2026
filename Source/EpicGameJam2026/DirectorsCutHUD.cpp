@@ -131,6 +131,9 @@ void ADirectorsCutHUD::DrawTitle(bool bStarting)
 		Button(TEXT("Start Editing"), Left, Top + 370 * UI, 204 * UI);
 		Text(TEXT("ENTER"), Left + 223 * UI, Top + 390 * UI, 11, Muted, false, 0, true);
 	}
+	// Centered in the gap between the button's bottom edge and the controls line's glyph tops.
+	const float GapCenter = (Top + 427 * UI + Height - 57 * UI) * 0.5f;
+	Text(TEXT("As the movie director, where you point matters!"), Left, GapCenter - 13 * UI, 16, Muted);
 	Text(TEXT("WASD  MOVE     CLICK  SLICE     SHIFT  DODGE     ESC  QUIT"),
 		Left, Height - 61 * UI, 12, Muted, false, 0, true);
 }
