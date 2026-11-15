@@ -4,6 +4,7 @@
 #include "Camera/CameraComponent.h"
 #include "Components/PoseableMeshComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "Components/TextRenderComponent.h"
 #include "Engine/SkeletalMesh.h"
 #include "Engine/StaticMesh.h"
 #include "Materials/MaterialInstanceDynamic.h"
@@ -802,7 +803,21 @@ void ADirectorsCutStage::BuildCashSet()
 		Shape(Bag, EShape::Cone, FVector(0, 0, 66), FVector(45, 45, 52), CashDark);
 		Shape(Bag, EShape::Cylinder, FVector(0, 0, 70), FVector(29, 29, 7), Lamp);
 		Shape(Bag, EShape::Ball, FVector(0, 0, 82), FVector(38, 41, 18), Cash);
-		Shape(Bag, EShape::Box, FVector(-40, 0, 31), FVector(4, 25, 23), Lamp);
+		// The bag turns halfway around as it lands, so mark both faces.
+		for (const float Side : {-1.0f, 1.0f})
+		{
+			UTextRenderComponent* Mark = NewObject<UTextRenderComponent>(this);
+			Mark->SetupAttachment(Bag);
+			Mark->SetRelativeLocation(FVector(42.5f * Side, 0, 35));
+			Mark->SetRelativeRotation(FRotator(0, Side < 0.0f ? 180.0f : 0.0f, 0));
+			Mark->SetText(FText::AsCultureInvariant(TEXT("$")));
+			Mark->SetTextRenderColor(FColor(52, 35, 22));
+			Mark->SetHorizontalAlignment(EHTA_Center);
+			Mark->SetVerticalAlignment(EVRTA_TextCenter);
+			Mark->SetWorldSize(36.0f);
+			Mark->SetCastShadow(false);
+			Mark->RegisterComponent();
+		}
 	}
 }
 
@@ -823,7 +838,7 @@ void ADirectorsCutStage::ShowPayout(ACameraActor& Camera, int32 EarnedBags, floa
 		const float ToY = 160.0f + (Index % 3) * 87.0f;
 		MoneyBags[Index]->SetRelativeLocationAndRotation(FVector(FMath::Lerp(FromX, ToX, Award),
 			FMath::Lerp(FromY, ToY, Award), 70 + 88 * FMath::Sin(PI * Award)),
-			FRotator(0, Index * 37 + Award * 185, 29 * FMath::Sin(PI * Award)));
+			FRotator(0, 11 + (Index % 3 - 1) * 9 + Award * 185, 29 * FMath::Sin(PI * Award)));
 	}
 	const FVector Origin = CashSet->GetComponentLocation();
 	const float Push = Smooth(Time / PayoutDuration);
