@@ -293,9 +293,8 @@ void ADirectorsCutStage::BuildArena()
 		Prop(Bench, EShape::Box, FVector(0, 0, 78), FVector(220, 88, 8), BenchTop);
 		Prop(Bench, EShape::Box, FVector(-70, 0, 18), FVector(18, 18, 36), Ink);
 		Prop(Bench, EShape::Box, FVector(70, 0, 18), FVector(18, 18, 36), Ink);
-		// Built-in lightbox.
-		Shape(Bench, EShape::Box, FVector(-20, 0, 84), FVector(70, 48, 4), FColor(255, 246, 220), FRotator::ZeroRotator, true);
-		PointLight(Bench, FVector(-20, 0, 110), FColor(255, 244, 210), 250, 180);
+		// Table inset under the reels — matte, no emissive / point light.
+		Prop(Bench, EShape::Box, FVector(-20, 0, 84), FVector(70, 48, 4), FColor(48, 56, 58));
 		// Rewind spindles and roller bank.
 		Prop(Bench, EShape::Cylinder, FVector(55, -18, 108), FVector(10, 10, 52), Steel);
 		Prop(Bench, EShape::Cylinder, FVector(55, 18, 108), FVector(10, 10, 52), Steel);
