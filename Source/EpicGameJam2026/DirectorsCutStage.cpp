@@ -255,7 +255,7 @@ void ADirectorsCutStage::BuildArena()
 	Prop(Arena, EShape::Box, FVector(0, 0, -29), FVector(7000, 7400, 48), Ink);
 	Prop(Arena, EShape::Box, FVector(0, 0, -9), FVector(DeckX, DeckY, 18), Floor);
 
-	// Industrial editing-room floor: checkered field with a striped film-strip cross aisle.
+	// Large checker field, with a finer checker on the center cross.
 	Prop(Arena, EShape::Box, FVector(0, 0, 0.4), FVector(1160, 1840, 1.0), LabFloor);
 	for (int32 X = -5; X <= 5; ++X)
 	{
@@ -265,20 +265,25 @@ void ADirectorsCutStage::BuildArena()
 			Prop(Arena, EShape::Box, FVector(X * 100.0, Y * 100.0, 0.7), FVector(96, 96, 0.8), Tile);
 		}
 	}
-	// Cross underlay, then parallel stripes so it reads against the checker.
 	Prop(Arena, EShape::Box, FVector(0, 0, 1.0), FVector(420, 1400, 0.7), AisleB);
 	Prop(Arena, EShape::Box, FVector(0, 0, 1.0), FVector(900, 360, 0.7), AisleB);
-	for (int32 Stripe = -8; Stripe <= 8; ++Stripe)
+	constexpr double Small = 40.0;
+	for (int32 X = -12; X <= 12; ++X)
 	{
-		const FColor Band = (Stripe & 1) ? AisleA : AisleB;
-		Prop(Arena, EShape::Box, FVector(Stripe * 24.0, 0, 1.15), FVector(20, 1380, 0.75), Band);
+		for (int32 Y = -18; Y <= 18; ++Y)
+		{
+			const double PX = X * Small;
+			const double PY = Y * Small;
+			const bool bInCross = (FMath::Abs(PX) <= 210.0 && FMath::Abs(PY) <= 700.0) ||
+				(FMath::Abs(PY) <= 180.0 && FMath::Abs(PX) <= 450.0);
+			if (!bInCross)
+			{
+				continue;
+			}
+			const FColor Tile = ((X + Y) & 1) ? AisleA : AisleB;
+			Prop(Arena, EShape::Box, FVector(PX, PY, 1.15), FVector(Small - 4.0, Small - 4.0, 0.75), Tile);
+		}
 	}
-	for (int32 Stripe = -6; Stripe <= 6; ++Stripe)
-	{
-		const FColor Band = (Stripe & 1) ? AisleA : AisleB;
-		Prop(Arena, EShape::Box, FVector(0, Stripe * 26.0, 1.2), FVector(880, 22, 0.75), Band);
-	}
-	// Thin edge rails so the cross silhouette stays crisp.
 	Prop(Arena, EShape::Box, FVector(-208, 0, 1.35), FVector(4, 1400, 0.6), AisleEdge);
 	Prop(Arena, EShape::Box, FVector(208, 0, 1.35), FVector(4, 1400, 0.6), AisleEdge);
 	Prop(Arena, EShape::Box, FVector(0, -178, 1.35), FVector(900, 4, 0.6), AisleEdge);

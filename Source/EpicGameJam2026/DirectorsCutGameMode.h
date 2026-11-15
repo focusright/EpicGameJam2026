@@ -118,8 +118,10 @@ private:
 	float ShotTime = 0.0f;
 	bool bFilmActionPlayed = false;
 	int32 PaidBags = 0;
+	float StoredDirectionalIntensity = -1.0f;
 
 	void SetPhase(DirectorsCut::EPhase NewPhase);
+	void SetDirectionalIntensityForReel(bool bReelPlaying);
 	void StartTake();
 	void UpdateCombat(float DeltaSeconds);
 	void UpdateEnemy(int32 Index, float DeltaSeconds);

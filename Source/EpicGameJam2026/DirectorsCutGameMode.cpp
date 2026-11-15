@@ -4,6 +4,9 @@
 #include "Components/AudioComponent.h"
 #include "DirectorsCutHUD.h"
 #include "DirectorsCutStage.h"
+#include "Components/LightComponent.h"
+#include "Engine/DirectionalLight.h"
+#include "EngineUtils.h"
 #include "InputCoreTypes.h"
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetSystemLibrary.h"
@@ -196,12 +199,42 @@ void ADirectorsCutGameMode::BeginPlay()
 
 void ADirectorsCutGameMode::SetPhase(EPhase NewPhase)
 {
+	const EPhase Previous = Phase;
 	Phase = NewPhase;
 	PhaseTime = 0.0f;
 	if (ADirectorsCutController* Controller = Cast<ADirectorsCutController>(GetWorld()->GetFirstPlayerController()))
 	{
 		Controller->SetCursorVisible(NewPhase == EPhase::Title || NewPhase == EPhase::Combat ||
 			NewPhase == EPhase::ReelReady || NewPhase == EPhase::GetPaid || NewPhase == EPhase::Reception);
+	}
+	if (NewPhase == EPhase::Screening && Previous != EPhase::Screening)
+	{
+		SetDirectionalIntensityForReel(true);
+	}
+	else if (Previous == EPhase::Screening && NewPhase != EPhase::Screening)
+	{
+		SetDirectionalIntensityForReel(false);
+	}
+}
+
+void ADirectorsCutGameMode::SetDirectionalIntensityForReel(bool bReelPlaying)
+{
+	for (TActorIterator<ADirectionalLight> It(GetWorld()); It; ++It)
+	{
+		if (ULightComponent* Sun = It->GetLightComponent())
+		{
+			if (bReelPlaying)
+			{
+				StoredDirectionalIntensity = Sun->Intensity;
+				Sun->SetIntensity(StoredDirectionalIntensity * 0.5f);
+			}
+			else if (StoredDirectionalIntensity >= 0.0f)
+			{
+				Sun->SetIntensity(StoredDirectionalIntensity);
+				StoredDirectionalIntensity = -1.0f;
+			}
+			break;
+		}
 	}
 }
 
