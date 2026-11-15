@@ -49,6 +49,7 @@ namespace
 	constexpr float ReelMusicFadeOutSeconds = 2.0f;
 	const TCHAR* TornFleshPath = TEXT("/Game/audio/Karl_Casey_-_Torn_Flesh.Karl_Casey_-_Torn_Flesh");
 	const TCHAR* OpeningAdventurePath = TEXT("/Game/audio/opening-adventure.opening-adventure");
+	const TCHAR* GameplayMusicPath = TEXT("/Game/audio/gameplay.gameplay");
 	const TCHAR* ClosingAdventurePath = TEXT("/Game/audio/closing-adventure.closing-adventure");
 
 	FVector2D ClampToArena(FVector2D Point, float Margin = 0.0f)
@@ -277,16 +278,29 @@ void ADirectorsCutGameMode::SetPhase(EPhase NewPhase)
 			PhaseMusic->FadeOut(TitleStartDuration, 0.0f);
 		}
 	}
-	// Keep the closing track playing through the transition from the count to Play Again.
-	else if (NewPhase != EPhase::Reception)
+	// Keep each track playing across the phases that lead up to its next button press.
+	else if (NewPhase != EPhase::Wrap && NewPhase != EPhase::ReelReady && NewPhase != EPhase::Reception)
 	{
 		if (IsValid(PhaseMusic))
 		{
 			PhaseMusic->Stop();
 		}
 		PhaseMusic = nullptr;
-		const TCHAR* MusicPath = NewPhase == EPhase::Title ? OpeningAdventurePath :
-			(NewPhase == EPhase::Payout ? ClosingAdventurePath : nullptr);
+		const TCHAR* MusicPath = nullptr;
+		switch (NewPhase)
+		{
+		case EPhase::Title:
+			MusicPath = OpeningAdventurePath;
+			break;
+		case EPhase::Combat:
+			MusicPath = GameplayMusicPath;
+			break;
+		case EPhase::Payout:
+			MusicPath = ClosingAdventurePath;
+			break;
+		default:
+			break;
+		}
 		if (MusicPath)
 		{
 			if (USoundWave* Track = LoadObject<USoundWave>(nullptr, MusicPath))
