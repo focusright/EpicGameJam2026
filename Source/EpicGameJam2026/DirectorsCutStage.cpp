@@ -162,6 +162,7 @@ bool ADirectorsCutStage::Build()
 	CashSet = Group(StageRoot, CashOrigin);
 	BuildArena();
 	BuildDirector();
+	BuildTitleDirector();
 	for (int32 Index = 0; Index < ReelSize; ++Index)
 	{
 		BuildEnemy(Index);
@@ -191,6 +192,11 @@ void ADirectorsCutStage::ShowSet(USceneComponent* ActiveSet)
 
 void ADirectorsCutStage::ResetArena()
 {
+	if (TitleDirector)
+	{
+		TitleDirector->SetVisibility(false, true);
+	}
+	Director->SetVisibility(true, true);
 	Director->AttachToComponent(Arena, FAttachmentTransformRules::KeepRelativeTransform);
 	ShowSet(Arena);
 	PoseDirector(FVector2D::ZeroVector, FVector2D::UnitX(), 0.0f, 0.0f, 0.0f);
@@ -319,6 +325,74 @@ void ADirectorsCutStage::BuildDirector()
 	BladeTrail->SetVisibility(false, true);
 }
 
+void ADirectorsCutStage::BuildTitleDirector()
+{
+	USkeletalMesh* Steven = LoadObject<USkeletalMesh>(nullptr, TEXT("/Game/Player/Mesh/1/Steven1.Steven1"));
+	UStaticMesh* Machete = LoadObject<UStaticMesh>(nullptr,
+		TEXT("/Game/TripoModels/long_blade_machete_3d_model/long_blade_machete_3d_model.long_blade_machete_3d_model"));
+	if (!Steven || !Machete)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("The Godzilla Steven title meshes could not be loaded."));
+		PoseDirector(FVector2D::ZeroVector, FVector2D(-0.9, -0.43), 0.0f, 0.0f, 0.0f);
+		return;
+	}
+
+	TitleDirector = NewObject<UPoseableMeshComponent>(this, TEXT("TitleSteven"));
+	TitleDirector->SetupAttachment(Arena);
+	TitleDirector->SetSkinnedAssetAndUpdate(Steven);
+	TitleDirector->SetRelativeTransform(FTransform(FRotator(0, 110, 0), FVector(-90, -73, 0), FVector(1.20)));
+	TitleDirector->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	TitleDirector->RegisterComponent();
+
+	// Steven1's parent-space rotations extend the sword arm toward the camera.
+	// Spread the wrist turn across the forearm twist bones to keep its skin smooth.
+	const struct { FName Bone; FQuat Rotation; } Pose[] = {
+		{TEXT("upperarm_r"), FQuat(0.12736, -0.75503, 0.60029, -0.23101)},
+		{TEXT("lowerarm_r"), FQuat(-0.24045, -0.86095, -0.24466, 0.37561)},
+		{TEXT("lowerarm_twist_02_r"), FQuat(0, 0.17313, 0, 0.9849)},
+		{TEXT("lowerarm_twist_01_r"), FQuat(0, 0.34103, 0, 0.94005)},
+		{TEXT("upperarm_l"), FQuat(-0.58982, 0.05027, 0.00085, -0.80597)},
+		{TEXT("lowerarm_l"), FQuat(-0.06086, -0.00232, -0.10062, -0.99306)},
+		{TEXT("hand_r"), FQuat(0.11685, -0.83149, 0.24413, -0.48515)},
+		{TEXT("index_01_r"), FQuat(0.10355, -0.94926, -0.26086, 0.1419)},
+		{TEXT("index_02_r"), FQuat(0.44326, 0, 0, -0.89639)},
+		{TEXT("index_03_r"), FQuat(0.24362, 0, 0, -0.96987)},
+		{TEXT("middle_01_r"), FQuat(0.04467, -0.96255, -0.26712, 0.0124)},
+		{TEXT("middle_02_r"), FQuat(0.48175, 0, 0, -0.87631)},
+		{TEXT("middle_03_r"), FQuat(0.24361, 0, 0, -0.96987)},
+		{TEXT("ring_01_r"), FQuat(-0.23696, -0.66608, -0.19851, -0.67881)},
+		{TEXT("ring_02_r"), FQuat(0.27875, -0.5312, -0.37048, -0.70913)},
+		{TEXT("ring_03_r"), FQuat(0.23361, 0, -0.06911, -0.96987)},
+		{TEXT("pinky_01_r"), FQuat(-0.28371, -0.19354, -0.12148, -0.93128)},
+		{TEXT("pinky_02_r"), FQuat(-0.03422, -0.61221, -0.46982, -0.63506)},
+		{TEXT("pinky_03_r"), FQuat(0.16487, 0, -0.17935, -0.96987)},
+		{TEXT("thumb_01_r"), FQuat(0.0879, -0.11112, 0.2983, -0.9439)},
+		{TEXT("thumb_02_r"), FQuat(0.03289, -0.3784, -0.06206, -0.92297)},
+		{TEXT("thumb_03_r"), FQuat(-0.06151, 0, -0.04871, -0.99692)},
+	};
+	for (const auto& Joint : Pose)
+	{
+		const int32 BoneIndex = TitleDirector->GetBoneIndex(Joint.Bone);
+		if (TitleDirector->BoneSpaceTransforms.IsValidIndex(BoneIndex))
+		{
+			TitleDirector->BoneSpaceTransforms[BoneIndex].SetRotation(Joint.Rotation.GetNormalized());
+		}
+	}
+	TitleDirector->MarkRefreshTransformDirty();
+	TitleDirector->RefreshBoneTransforms();
+
+	UStaticMeshComponent* Blade = NewObject<UStaticMeshComponent>(this, TEXT("TitleMachete"));
+	Blade->SetupAttachment(TitleDirector, TEXT("hand_r"));
+	Blade->SetStaticMesh(Machete);
+	Blade->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	// The grip sits in the fist. The hand inherits a scale of two from Steven1's root bone.
+	Blade->SetRelativeTransform(FTransform(
+		FQuat(0.52761, -0.45847, -0.1389, 0.70153).GetNormalized(),
+		FVector(-4.11872, 1.90405, -2.5555), FVector(0.645)));
+	Blade->RegisterComponent();
+	Director->SetVisibility(false, true);
+}
+
 void ADirectorsCutStage::BuildEnemy(int32 Index)
 {
 	FFilmEnemy& Enemy = FilmEnemies[Index];
@@ -364,7 +438,7 @@ void ADirectorsCutStage::SetArenaCamera(ACameraActor& Camera, float Time, bool b
 	if (bTitle)
 	{
 		FrameCamera(Camera, ArenaOrigin + FVector(-520, -490 + 30 * FMath::Sin(Time * 0.35f), 265),
-			ArenaOrigin + FVector(-12, -225, 94), 55.0f);
+			ArenaOrigin + FVector(-12, -225, TitleDirector ? 114 : 94), 55.0f);
 		return;
 	}
 	FrameCamera(Camera, ArenaOrigin + FVector(-810, 0, 1390), ArenaOrigin + FVector(85, 0, 0), 66.0f);

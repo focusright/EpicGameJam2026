@@ -280,7 +280,6 @@ void ADirectorsCutGameMode::Tick(float DeltaSeconds)
 	{
 	case EPhase::Title:
 		Stage->SetArenaCamera(*Camera, PhaseTime, true);
-		Stage->PoseDirector(FVector2D::ZeroVector, FVector2D(-0.9, -0.43), 0.0f, 0.0f, 0.0f);
 		break;
 	case EPhase::Combat:
 		UpdateCombat(DeltaSeconds);

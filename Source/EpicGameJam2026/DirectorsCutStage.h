@@ -91,6 +91,7 @@ private:
 	};
 
 	USceneComponent* Director = nullptr;
+	UPoseableMeshComponent* TitleDirector = nullptr;
 	USceneComponent* VisibleSet = nullptr;
 	USceneComponent* Upper = nullptr;
 	USceneComponent* Lower = nullptr;
@@ -125,6 +126,7 @@ private:
 	void PointLight(USceneComponent* Parent, FVector Location, FColor Color, float Intensity, float Radius);
 	void BuildArena();
 	void BuildDirector();
+	void BuildTitleDirector();
 	void BuildEnemy(int32 Index);
 	void BuildCity();
 	void BuildGodzilla();
