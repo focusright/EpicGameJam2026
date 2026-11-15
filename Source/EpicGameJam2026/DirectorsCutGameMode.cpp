@@ -49,7 +49,10 @@ void ADirectorsCutController::SetupInputComponent()
 	InputComponent->BindKey(EKeys::LeftShift, IE_Pressed, this, &ADirectorsCutController::Dodge);
 	InputComponent->BindKey(EKeys::RightMouseButton, IE_Pressed, this, &ADirectorsCutController::Dodge);
 	InputComponent->BindKey(EKeys::Enter, IE_Pressed, this, &ADirectorsCutController::Confirm);
-	InputComponent->BindKey(EKeys::Escape, IE_Pressed, this, &ADirectorsCutController::QuitGame);
+	FInputKeyBinding& PauseBind = InputComponent->BindKey(EKeys::P, IE_Pressed, this, &ADirectorsCutController::TogglePause);
+	PauseBind.bExecuteWhenPaused = true;
+	FInputKeyBinding& QuitBind = InputComponent->BindKey(EKeys::Escape, IE_Pressed, this, &ADirectorsCutController::QuitGame);
+	QuitBind.bExecuteWhenPaused = true;
 }
 
 ADirectorsCutGameMode* ADirectorsCutController::GetCutGame() const
@@ -96,6 +99,10 @@ bool ADirectorsCutController::ReadAim(const FVector& PlaneOrigin, FVector2D& Aim
 
 void ADirectorsCutController::Slash()
 {
+	if (UGameplayStatics::IsGamePaused(this))
+	{
+		return;
+	}
 	if (ADirectorsCutGameMode* Game = GetCutGame())
 	{
 		Game->Slash(false);
@@ -104,6 +111,10 @@ void ADirectorsCutController::Slash()
 
 void ADirectorsCutController::SlashAtCursor()
 {
+	if (UGameplayStatics::IsGamePaused(this))
+	{
+		return;
+	}
 	if (ADirectorsCutGameMode* Game = GetCutGame())
 	{
 		Game->Slash(true);
@@ -112,6 +123,10 @@ void ADirectorsCutController::SlashAtCursor()
 
 void ADirectorsCutController::Dodge()
 {
+	if (UGameplayStatics::IsGamePaused(this))
+	{
+		return;
+	}
 	if (ADirectorsCutGameMode* Game = GetCutGame())
 	{
 		Game->Dodge();
@@ -120,9 +135,30 @@ void ADirectorsCutController::Dodge()
 
 void ADirectorsCutController::Confirm()
 {
+	if (UGameplayStatics::IsGamePaused(this))
+	{
+		return;
+	}
 	if (ADirectorsCutGameMode* Game = GetCutGame())
 	{
 		Game->Confirm();
+	}
+}
+
+void ADirectorsCutController::TogglePause()
+{
+	const bool bPause = !UGameplayStatics::IsGamePaused(this);
+	UGameplayStatics::SetGamePaused(this, bPause);
+	if (bPause)
+	{
+		SetCursorVisible(true);
+	}
+	else if (const ADirectorsCutGameMode* Game = GetCutGame())
+	{
+		const DirectorsCut::EPhase Phase = Game->GetPhase();
+		SetCursorVisible(Phase == DirectorsCut::EPhase::Title || Phase == DirectorsCut::EPhase::Combat ||
+			Phase == DirectorsCut::EPhase::ReelReady || Phase == DirectorsCut::EPhase::GetPaid ||
+			Phase == DirectorsCut::EPhase::Reception);
 	}
 }
 

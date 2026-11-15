@@ -37,4 +37,5 @@ private:
 	void DrawReel(const ADirectorsCutGameMode& Game);
 	void DrawScreening(const ADirectorsCutGameMode& Game);
 	void DrawPayout(const ADirectorsCutGameMode& Game);
+	void DrawPaused();
 };

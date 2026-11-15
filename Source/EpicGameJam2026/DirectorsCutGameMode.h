@@ -50,6 +50,7 @@ private:
 	void SlashAtCursor();
 	void Dodge();
 	void Confirm();
+	void TogglePause();
 	void QuitGame();
 };
 

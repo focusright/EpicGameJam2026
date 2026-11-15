@@ -5,6 +5,7 @@
 #include "Engine/Canvas.h"
 #include "Engine/Font.h"
 #include "Fonts/SlateFontInfo.h"
+#include "Kismet/GameplayStatics.h"
 #include "UObject/ConstructorHelpers.h"
 
 using namespace DirectorsCut;
@@ -90,6 +91,10 @@ void ADirectorsCutHUD::DrawHUD()
 		DrawPayout(*Game);
 		break;
 	}
+	if (UGameplayStatics::IsGamePaused(GetWorld()))
+	{
+		DrawPaused();
+	}
 }
 
 void ADirectorsCutHUD::NotifyHitBoxClick(FName BoxName)
@@ -135,8 +140,21 @@ void ADirectorsCutHUD::DrawTitle(bool bStarting)
 	// Centered in the gap between the button's bottom edge and the controls line's glyph tops.
 	const float GapCenter = (Top + 427 * UI + Height - 57 * UI) * 0.5f;
 	Text(TEXT("As the movie director, where you point matters!"), Left, GapCenter - 13 * UI, 16, Muted);
-	Text(TEXT("WASD  MOVE     CLICK  SLICE     SHIFT  DODGE     ESC  QUIT"),
+	Text(TEXT("WASD  MOVE     CLICK  SLICE     SHIFT  DODGE     P  PAUSE     ESC  QUIT"),
 		Left, Height - 61 * UI, 12, Muted, false, 0, true);
+}
+
+void ADirectorsCutHUD::DrawPaused()
+{
+	Box(0, 0, Width, Height, FColor(12, 17, 20, 180));
+	const float PanelW = 360 * UI;
+	const float PanelH = 150 * UI;
+	const float PanelX = (Width - PanelW) * 0.5f;
+	const float PanelY = (Height - PanelH) * 0.5f;
+	Box(PanelX, PanelY, PanelW, PanelH, FColor(12, 17, 20, 236));
+	Box(PanelX, PanelY, 5 * UI, PanelH, Amber);
+	Text(TEXT("PAUSED"), Width * 0.5f, PanelY + 36 * UI, 42, Paper, true, 0.5f);
+	Text(TEXT("P  RESUME      ESC  QUIT"), Width * 0.5f, PanelY + 100 * UI, 14, Muted, false, 0.5f, true);
 }
 
 void ADirectorsCutHUD::DrawArena(const ADirectorsCutGameMode& Game)
@@ -145,7 +163,7 @@ void ADirectorsCutHUD::DrawArena(const ADirectorsCutGameMode& Game)
 	Box(0, 63 * UI, Width, 1 * UI, Edge);
 	Box(26 * UI, 18 * UI, 5 * UI, 28 * UI, Amber);
 	Text(TEXT("GODZILLA STEVEN"), 43 * UI, 17 * UI, 23, Paper, true);
-	Text(TEXT("WASD  MOVE   /   CLICK  SLICE   /   SHIFT  DODGE"), Width * 0.53f, 24 * UI, 12, Muted, false, 0.5f, true);
+	Text(TEXT("WASD  MOVE   /   CLICK  SLICE   /   SHIFT  DODGE   /   P  PAUSE"), Width * 0.53f, 24 * UI, 12, Muted, false, 0.5f, true);
 	Text(TEXT("DODGE"), Width - 130 * UI, 14 * UI, 10, Muted, false, 0, true);
 	Box(Width - 130 * UI, 37 * UI, 102 * UI, 5 * UI, Edge);
 	Box(Width - 130 * UI, 37 * UI, 102 * UI * Game.GetDashCharge(), 5 * UI, Amber);
