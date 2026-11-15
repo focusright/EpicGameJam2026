@@ -4,8 +4,10 @@
 #include "DirectorsCutGameMode.h"
 #include "Engine/Canvas.h"
 #include "Engine/Font.h"
+#include "Engine/Texture2D.h"
 #include "Fonts/SlateFontInfo.h"
 #include "Kismet/GameplayStatics.h"
+#include "TextureResource.h"
 #include "UObject/ConstructorHelpers.h"
 
 using namespace DirectorsCut;
@@ -56,6 +58,59 @@ void ADirectorsCutHUD::Button(const TCHAR* Label, float X, float Y, float W)
 	Box(X, Y + H - 3 * UI, W, 3 * UI, FColor(159, 99, 48));
 	Text(Label, X + W * 0.5f, Y + 13 * UI, 20, Void, true, 0.5f);
 	AddHitBox(FVector2D(X, Y), FVector2D(W, H), ActionButton, true);
+}
+
+void ADirectorsCutHUD::EnsureGrainTexture()
+{
+	if (GrainTexture)
+	{
+		return;
+	}
+	constexpr int32 Size = 256;
+	UTexture2D* Texture = UTexture2D::CreateTransient(Size, Size, PF_B8G8R8A8);
+	if (!Texture || !Texture->GetPlatformData() || Texture->GetPlatformData()->Mips.Num() == 0)
+	{
+		return;
+	}
+	Texture->SRGB = false;
+	Texture->Filter = TF_Bilinear;
+	Texture->AddressX = TA_Wrap;
+	Texture->AddressY = TA_Wrap;
+	Texture->CompressionSettings = TC_VectorDisplacementmap;
+	Texture->MipGenSettings = TMGS_NoMipmaps;
+	Texture->NeverStream = true;
+
+	FTexture2DMipMap& Mip = Texture->GetPlatformData()->Mips[0];
+	uint8* Pixels = static_cast<uint8*>(Mip.BulkData.Lock(LOCK_READ_WRITE));
+	FRandomStream Rng(2026);
+	for (int32 Index = 0; Index < Size * Size; ++Index)
+	{
+		const uint8 Value = static_cast<uint8>(Rng.RandRange(0, 255));
+		Pixels[Index * 4 + 0] = Value;
+		Pixels[Index * 4 + 1] = Value;
+		Pixels[Index * 4 + 2] = Value;
+		Pixels[Index * 4 + 3] = static_cast<uint8>(Rng.RandRange(70, 200));
+	}
+	Mip.BulkData.Unlock();
+	Texture->UpdateResource();
+	GrainTexture = Texture;
+}
+
+void ADirectorsCutHUD::DrawFilmGrain(float X, float Y, float W, float H, float Opacity)
+{
+	EnsureGrainTexture();
+	if (!Canvas || !GrainTexture || !GrainTexture->GetResource() || W <= 0.0f || H <= 0.0f)
+	{
+		return;
+	}
+	const float TileX = 3.2f;
+	const float TileY = TileX * (H / W);
+	const float U = FMath::FRand();
+	const float V = FMath::FRand();
+	FCanvasTileItem Tile(FVector2D(X, Y), GrainTexture->GetResource(), FVector2D(W, H),
+		FVector2D(U, V), FVector2D(U + TileX, V + TileY), FLinearColor(1.0f, 1.0f, 1.0f, Opacity));
+	Tile.BlendMode = SE_BLEND_Translucent;
+	Canvas->DrawItem(Tile);
 }
 
 void ADirectorsCutHUD::DrawHUD()
@@ -219,6 +274,11 @@ void ADirectorsCutHUD::DrawReel(const ADirectorsCutGameMode& Game)
 void ADirectorsCutHUD::DrawScreening(const ADirectorsCutGameMode& Game)
 {
 	const float Matte = Height * 0.105f;
+	if (Game.GetPhase() == EPhase::Screening)
+	{
+		// Engine film-grain PP is easy to miss (texture streaming / scalability). Overlay is reliable.
+		DrawFilmGrain(0.0f, Matte, Width, Height - Matte * 2.0f, 0.28f);
+	}
 	Box(0, 0, Width, Matte, Void);
 	Box(0, Height - Matte, Width, Matte, Void);
 	Box(26 * UI, Matte - 16 * UI, 5 * UI, 5 * UI, Amber);

@@ -5,7 +5,10 @@
 #include "DirectorsCutHUD.h"
 #include "DirectorsCutStage.h"
 #include "Components/LightComponent.h"
+#include "Camera/CameraComponent.h"
 #include "Engine/DirectionalLight.h"
+#include "Engine/Engine.h"
+#include "Engine/Texture2D.h"
 #include "EngineUtils.h"
 #include "InputCoreTypes.h"
 #include "Kismet/GameplayStatics.h"
@@ -209,16 +212,65 @@ void ADirectorsCutGameMode::SetPhase(EPhase NewPhase)
 	}
 	if (NewPhase == EPhase::Screening && Previous != EPhase::Screening)
 	{
-		SetDirectionalIntensityForReel(true);
+		SetReelPlaybackEffects(true);
 	}
 	else if (Previous == EPhase::Screening && NewPhase != EPhase::Screening)
 	{
-		SetDirectionalIntensityForReel(false);
+		SetReelPlaybackEffects(false);
 	}
 }
 
-void ADirectorsCutGameMode::SetDirectionalIntensityForReel(bool bReelPlaying)
+void ADirectorsCutGameMode::SetReelPlaybackEffects(bool bReelPlaying)
 {
+	if (Camera)
+	{
+		if (UCameraComponent* Lens = Camera->GetCameraComponent())
+		{
+			FPostProcessSettings& Settings = Lens->PostProcessSettings;
+			if (bReelPlaying)
+			{
+				Lens->PostProcessBlendWeight = 1.0f;
+				// UE only applies film grain when a texture is bound (default or override).
+				if (GEngine)
+				{
+					GEngine->LoadDefaultFilmGrainTexture();
+					if (GEngine->DefaultFilmGrainTexture)
+					{
+						Settings.bOverride_FilmGrainTexture = true;
+						Settings.FilmGrainTexture = GEngine->DefaultFilmGrainTexture;
+					}
+				}
+				Settings.bOverride_FilmGrainIntensity = true;
+				Settings.FilmGrainIntensity = 1.0f;
+				Settings.bOverride_FilmGrainIntensityShadows = true;
+				Settings.FilmGrainIntensityShadows = 1.0f;
+				Settings.bOverride_FilmGrainIntensityMidtones = true;
+				Settings.FilmGrainIntensityMidtones = 0.85f;
+				Settings.bOverride_FilmGrainIntensityHighlights = true;
+				Settings.FilmGrainIntensityHighlights = 0.55f;
+				Settings.bOverride_FilmGrainScale = true;
+				Settings.FilmGrainScale = FVector2f(2.0f, 2.0f);
+				Settings.bOverride_VignetteIntensity = true;
+				Settings.VignetteIntensity = 0.55f;
+				Settings.bOverride_SceneFringeIntensity = true;
+				Settings.SceneFringeIntensity = 0.4f;
+			}
+			else
+			{
+				Lens->PostProcessBlendWeight = 0.0f;
+				Settings.bOverride_FilmGrainTexture = false;
+				Settings.FilmGrainTexture = nullptr;
+				Settings.bOverride_FilmGrainIntensity = false;
+				Settings.bOverride_FilmGrainIntensityShadows = false;
+				Settings.bOverride_FilmGrainIntensityMidtones = false;
+				Settings.bOverride_FilmGrainIntensityHighlights = false;
+				Settings.bOverride_FilmGrainScale = false;
+				Settings.bOverride_VignetteIntensity = false;
+				Settings.bOverride_SceneFringeIntensity = false;
+			}
+		}
+	}
+
 	for (TActorIterator<ADirectionalLight> It(GetWorld()); It; ++It)
 	{
 		if (ULightComponent* Sun = It->GetLightComponent())
