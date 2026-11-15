@@ -50,7 +50,11 @@ void ADirectorsCutStage::BuildCity()
 	Prop(City, EShape::Box, FVector(0, 0, -110), FVector(14500, 13700, 200), Asphalt);
 	FRandomStream Random(8415);
 	FRandomStream FacadeRandom(1745);
-	const FColor Walls[] = {FColor(65, 93, 106), FColor(90, 107, 109), FColor(111, 124, 126), FColor(51, 78, 95)};
+	const FColor Walls[] = {FColor(78, 98, 109), FColor(117, 109, 97), FColor(132, 132, 118), FColor(86, 98, 94)};
+	const FColor WallTrim[] = {FColor(112, 132, 141), FColor(151, 139, 121), FColor(156, 155, 141)};
+	const FColor RoofMembrane(52, 58, 61);
+	const FColor RoofSeam(64, 69, 71);
+	const FColor Galvanized(112, 124, 124);
 	const FColor UnlitWindows[] = {FColor(34, 63, 78), FColor(63, 101, 117)};
 	const FColor LitWindows[] = {FColor(234, 188, 111), FColor(168, 209, 218)};
 	UStaticMesh* GlassPlane = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Plane.Plane"));
@@ -82,6 +86,20 @@ void ADirectorsCutStage::BuildCity()
 				{
 					return bXFace ? FVector(Out, Across, Z) : FVector(Across, Out, Z);
 				};
+				const FColor Trim = WallTrim[Style];
+				for (double Edge : {-1.0, 1.0})
+				{
+					Prop(Parent, EShape::Box, Position(Edge * (Span / 2 - 10), 1, Height / 2),
+						Size(15, 9, Height), Trim);
+				}
+				Prop(Parent, EShape::Box, Position(0, 2, 21), Size(Span - 20, 7, 40), Steel);
+				Prop(Parent, EShape::Box, Position(0, 4, 80 - PaneHeight / 2), Size(Span - 20, 12, 5), Trim);
+				for (int32 Row = 0; Row < Rows; ++Row)
+				{
+					const double Z = FirstFloor + Row * FloorSpacing - PaneHeight / 2 - 6;
+					Prop(Parent, EShape::Box, Position(0, Style == 2 ? 5 : 2, Z),
+						Size(Span - 26, Style == 2 ? 12 : 5, Style == 0 ? 3 : 5), Trim);
+				}
 				for (int32 Column = 0; Column < Columns; ++Column)
 				{
 					const double Across = (Column - (Columns - 1) * 0.5) * Pitch;
@@ -108,9 +126,64 @@ void ADirectorsCutStage::BuildCity()
 						Pane->RegisterComponent();
 					}
 				}
-				Prop(Parent, EShape::Box, Position(0, 2, 35), Size(Span * 0.55, 6, 48), Steel);
-				Prop(Parent, EShape::Box, Position(0, 12, 62), Size(Span * 0.62, 26, 9), Concrete);
+				Prop(Parent, EShape::Box, Position(0, 7, 30), Size(Span * 0.39, 7, 44), Black);
+				for (double Door : {-1.0, 1.0})
+				{
+					Prop(Parent, EShape::Box, Position(Door * Span * 0.083, 11, 30), Size(Span * 0.15, 3, 37), UnlitWindows[1]);
+				}
+				Prop(Parent, EShape::Box, Position(0, 14, 60), Size(Span * 0.47, 28, 6), Trim);
+				Prop(Parent, EShape::Box, Position(0, 19, 7), Size(Span * 0.48, 32, 7), Concrete);
 			}
+		}
+	};
+	const auto AddRoof = [&](USceneComponent* Parent, FVector Base, double Width, double Depth, double Height, int32 Style)
+	{
+		const FVector Roof = Base + FVector(0, 0, Height);
+		const FColor Coping = WallTrim[Style];
+		Prop(Parent, EShape::Box, Roof + FVector(0, 0, 6), FVector(Width + 8, Depth + 8, 12), Steel);
+		Prop(Parent, EShape::Box, Roof + FVector(0, 0, 13), FVector(Width - 8, Depth - 8, 3), RoofMembrane);
+		for (double Side : {-1.0, 1.0})
+		{
+			Prop(Parent, EShape::Box, Roof + FVector(Side * Width / 2, 0, 20), FVector(8, Depth + 8, 24), Coping);
+			Prop(Parent, EShape::Box, Roof + FVector(0, Side * Depth / 2, 20), FVector(Width - 8, 8, 24), Coping);
+			Prop(Parent, EShape::Box, Roof + FVector(Side * Width / 2, 0, 33), FVector(14, Depth + 14, 4), Steel);
+			Prop(Parent, EShape::Box, Roof + FVector(0, Side * Depth / 2, 33), FVector(Width - 14, 14, 4), Steel);
+		}
+		for (double Seam = -Width / 2 + 32; Seam < Width / 2 - 12; Seam += 48)
+		{
+			Prop(Parent, EShape::Box, Roof + FVector(Seam, 0, 15), FVector(1.5, Depth - 18, 1.5), RoofSeam);
+		}
+
+		const FVector Service = Roof + FVector(-Width * 0.22, -Depth * 0.16, 0);
+		const double ServiceWidth = Width * 0.27;
+		const double ServiceDepth = Depth * 0.37;
+		Prop(Parent, EShape::Box, Service + FVector(0, 0, 34), FVector(ServiceWidth, ServiceDepth, 39), Coping);
+		Prop(Parent, EShape::Box, Service + FVector(0, 0, 55), FVector(ServiceWidth + 6, ServiceDepth + 6, 5), Steel);
+		Prop(Parent, EShape::Box, Service + FVector(ServiceWidth / 2 + 1, 0, 29),
+			FVector(3, ServiceDepth * 0.42, 27), Steel);
+
+		const FVector Vent = Roof + FVector(Width * 0.24, Depth * 0.19, 0);
+		const double VentWidth = Width * 0.23;
+		const double VentDepth = Depth * 0.24;
+		Prop(Parent, EShape::Box, Vent + FVector(0, 0, 17), FVector(VentWidth + 7, VentDepth + 7, 5), Concrete);
+		Prop(Parent, EShape::Box, Vent + FVector(0, 0, 29), FVector(VentWidth, VentDepth, 20), Galvanized);
+		Prop(Parent, EShape::Cylinder, Vent + FVector(0, 0, 40),
+			FVector(FMath::Min(VentWidth, VentDepth) * 0.75, FMath::Min(VentWidth, VentDepth) * 0.75, 3), Black);
+		for (double Slat : {-6.0, 0.0, 6.0})
+		{
+			Prop(Parent, EShape::Box, Vent + FVector(VentWidth / 2 + 1, 0, 29 + Slat),
+				FVector(2, VentDepth * 0.85, 2), Steel);
+		}
+		if (Style == 1)
+		{
+			Prop(Parent, EShape::Box, Service + FVector(0, 0, 86), FVector(7, 7, 58), Galvanized);
+			Prop(Parent, EShape::Box, Service + FVector(0, 0, 103), FVector(5, 55, 5), Steel);
+		}
+		else
+		{
+			const FVector Stack = Roof + FVector(-Width * 0.25, Depth * 0.30, 0);
+			Prop(Parent, EShape::Cylinder, Stack + FVector(0, 0, 31), FVector(12, 12, 33), Galvanized);
+			Prop(Parent, EShape::Cylinder, Stack + FVector(0, 0, 49), FVector(19, 19, 4), Steel);
 		}
 	};
 	for (int32 X = -5; X <= 5; ++X)
@@ -129,25 +202,8 @@ void ADirectorsCutStage::BuildCity()
 			const int32 Style = FMath::Abs(X * 2 + Y) % 3;
 			Prop(City, EShape::Box, Location + FVector(0, 0, 0), FVector(700, 680, 23), Concrete);
 			Prop(City, EShape::Box, Location + FVector(0, 0, Height / 2), FVector(Width, Depth, Height), Wall);
-			Prop(City, EShape::Box, Location + FVector(0, 0, Height + 11), FVector(Width + 25, Depth + 25, 22), Steel);
-			Prop(City, EShape::Box, Location + FVector(-Width * 0.16, 0, Height + 42), FVector(Width * 0.30, Depth * 0.51, 64), Wall);
 			AddFacade(City, Location, Width, Depth, Height, Style, FMath::Abs(Y) == 1 && FMath::Abs(X) <= 2);
-			if (Style == 0)
-			{
-				Prop(City, EShape::Cylinder, Location + FVector(Width * 0.26, 0, Height + 52), FVector(83, 83, 64), Steel);
-				Prop(City, EShape::Cylinder, Location + FVector(Width * 0.26, 0, Height + 87), FVector(93, 93, 8), Concrete);
-			}
-			else if (Style == 1)
-			{
-				Prop(City, EShape::Box, Location + FVector(-Width * 0.16, 0, Height + 95), FVector(9, 9, 79), Concrete);
-				Prop(City, EShape::Box, Location + FVector(-Width * 0.16, 0, Height + 119), FVector(7, 68, 7), Steel);
-			}
-			else
-			{
-				Prop(City, EShape::Box, Location + FVector(0, 0, Height + 27), FVector(Width + 30, Depth + 30, 13), Concrete);
-				Prop(City, EShape::Box, Location + FVector(Width * 0.25, Depth * 0.21, Height + 48),
-					FVector(Width * 0.20, Depth * 0.22, 40), Steel);
-			}
+			AddRoof(City, Location, Width, Depth, Height, Style);
 		}
 	}
 	for (int32 Index = -27; Index <= 27; ++Index)
@@ -199,8 +255,8 @@ void ADirectorsCutStage::BuildCity()
 		const float Height = Random.FRandRange(235, 510);
 		USceneComponent* Building = Group(City, Location);
 		Shape(Building, EShape::Box, FVector(0, 0, Height / 2), FVector(136, 180, Height), Walls[Index % 4]);
-		Shape(Building, EShape::Box, FVector(0, 0, Height + 9), FVector(149, 193, 18), Concrete);
 		AddFacade(Building, FVector::ZeroVector, 136, 180, Height, Index % 3, true);
+		AddRoof(Building, FVector::ZeroVector, 136, 180, Height, Index % 3);
 		Buildings.Add({Building, Location, Time, Height});
 	}
 	for (int32 Index = 0; Index < UE_ARRAY_COUNT(Dust); ++Index)
