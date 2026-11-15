@@ -106,6 +106,9 @@ private:
 	UPROPERTY()
 	TObjectPtr<UAudioComponent> ReelMusic;
 
+	UPROPERTY()
+	TObjectPtr<UAudioComponent> PhaseMusic;
+
 	TArray<TArray<int16>> Sounds;
 
 	DirectorsCut::EPhase Phase = DirectorsCut::EPhase::Title;
