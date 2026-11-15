@@ -91,6 +91,7 @@ private:
 	struct FBuilding
 	{
 		USceneComponent* Root;
+		USceneComponent* Rubble;
 		FVector Position;
 		float ImpactTime;
 		float Height;

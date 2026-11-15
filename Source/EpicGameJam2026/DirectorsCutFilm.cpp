@@ -12,7 +12,7 @@ using namespace DirectorsCut;
 
 namespace
 {
-	const FColor Asphalt(40, 52, 61);
+	const FColor Asphalt(42, 46, 48);
 	const FColor Concrete(110, 132, 141);
 	const FColor Steel(43, 73, 86);
 	const FColor StreetPaint(165, 163, 129);
@@ -47,8 +47,21 @@ namespace
 
 void ADirectorsCutStage::BuildCity()
 {
-	Prop(City, EShape::Box, FVector(0, 0, -110), FVector(14500, 13700, 200), Asphalt);
+	const FColor Pavement(76, 78, 75);
+	const FColor Curb(123, 124, 114);
+	const FColor RoadShoulder(54, 55, 52);
+	const FColor RoadRepair[] = {FColor(58, 58, 54), FColor(49, 51, 51), FColor(34, 38, 40)};
+	const FColor FadedPaint(119, 116, 96);
+	const FColor Crack(24, 27, 28);
+	const FColor RubbleStone[] = {FColor(100, 95, 84), FColor(135, 130, 116), FColor(68, 71, 68)};
+	Prop(City, EShape::Box, FVector(0, 0, -106), FVector(14500, 13700, 200), Pavement);
+	Prop(City, EShape::Box, FVector(0, 0, -3.5), FVector(12500, 650, 7), Asphalt);
+	for (double Side : {-1.0, 1.0})
+	{
+		Prop(City, EShape::Box, FVector(0, Side * 3112.5, -3.5), FVector(650, 5575, 7), Asphalt);
+	}
 	FRandomStream Random(8415);
+	FRandomStream StreetRandom(3671);
 	FRandomStream FacadeRandom(1745);
 	const FColor Walls[] = {FColor(78, 98, 109), FColor(117, 109, 97), FColor(132, 132, 118), FColor(86, 98, 94)};
 	const FColor WallTrim[] = {FColor(112, 132, 141), FColor(151, 139, 121), FColor(156, 155, 141)};
@@ -206,17 +219,76 @@ void ADirectorsCutStage::BuildCity()
 			AddRoof(City, Location, Width, Depth, Height, Style);
 		}
 	}
-	for (int32 Index = -27; Index <= 27; ++Index)
+	for (bool bCrossStreet : {false, true})
 	{
-		Prop(City, EShape::Box, FVector(Index * 180, 0, 0.5), FVector(72, 9, 1), StreetPaint);
-		Prop(City, EShape::Box, FVector(0, Index * 170, 0.5), FVector(9, 68, 1), StreetPaint);
+		const auto RoadPoint = [bCrossStreet](double Along, double Across, double Height)
+		{
+			return bCrossStreet ? FVector(Across, Along, Height) : FVector(Along, Across, Height);
+		};
+		const FRotator RoadRotation(0, bCrossStreet ? 90 : 0, 0);
+		for (int32 Index = -27; Index <= 27; ++Index)
+		{
+			if (FMath::Abs(Index) < 3)
+			{
+				continue;
+			}
+			const double Along = Index * 180;
+			Prop(City, EShape::Box, RoadPoint(Along, 0, 0.6), FVector(76, 8, 1),
+				Index % 4 == 0 ? StreetPaint : FadedPaint, RoadRotation);
+			for (double Side : {-1.0, 1.0})
+			{
+				Prop(City, EShape::Box, RoadPoint(Along, Side * 308, 0.6), FVector(179, 32, 1), RoadShoulder, RoadRotation);
+				Prop(City, EShape::Box, RoadPoint(Along, Side * 332, 3), FVector(178, 15, 12), Curb, RoadRotation);
+				Prop(City, EShape::Box, RoadPoint(Along, Side * 369, 0), FVector(176, 62, 15),
+					Index % 3 == 0 ? Concrete : Pavement, RoadRotation);
+				if (Index % 4 == 0)
+				{
+					const FVector Drain = RoadPoint(Along + 38, Side * 307, 1);
+					Prop(City, EShape::Box, Drain, FVector(35, 19, 2), Black, RoadRotation);
+					for (double Bar : {-10.0, 0.0, 10.0})
+					{
+						Prop(City, EShape::Box, RoadPoint(Along + 38 + Bar, Side * 307, 2.2),
+							FVector(2.5, 17, 1), Curb, RoadRotation);
+					}
+				}
+			}
+			if (Index % 3 == 0)
+			{
+				const FVector Cover = RoadPoint(Along + 49, 101, 0.4);
+				Prop(City, EShape::Cylinder, Cover, FVector(41, 41, 2), Black);
+				Prop(City, EShape::Cylinder, Cover + FVector(0, 0, 1), FVector(34, 34, 1.5), RoadShoulder);
+			}
+		}
+		for (int32 Patch = 0; Patch < 65; ++Patch)
+		{
+			const double Along = StreetRandom.FRandRange(-4600, 4600);
+			const double Across = StreetRandom.FRandRange(54, 278) * (Patch % 2 == 0 ? -1 : 1);
+			const double Length = StreetRandom.FRandRange(29, 160);
+			const double Width = StreetRandom.FRandRange(16, 59);
+			const FRotator PatchRotation(0, RoadRotation.Yaw + StreetRandom.FRandRange(-12, 12), 0);
+			Prop(City, EShape::Box, RoadPoint(Along, Across, 0.2), FVector(Length, Width, 0.7),
+				RoadRepair[Patch % UE_ARRAY_COUNT(RoadRepair)], PatchRotation);
+			if (Patch % 3 == 0)
+			{
+				FVector Start = RoadPoint(Along - Length / 2, Across, 1.1);
+				for (int32 Segment = 1; Segment <= 4; ++Segment)
+				{
+					const FVector End = RoadPoint(Along + Length * (Segment / 4.0 - 0.5),
+						Across + StreetRandom.FRandRange(-17, 17), 1.1);
+					const FVector Span = End - Start;
+					Prop(City, EShape::Box, (Start + End) / 2, FVector(Span.Size() + 1, 2.8, 0.7), Crack, Span.Rotation());
+					Start = End;
+				}
+			}
+		}
 	}
 	for (int32 Index = 0; Index < 10; ++Index)
 	{
 		for (double Side : {-1.0, 1.0})
 		{
-			Prop(City, EShape::Box, FVector(Side * 355, Index * 43 - 195, 1), FVector(99, 26, 2), StreetPaint);
-			Prop(City, EShape::Box, FVector(Index * 43 - 195, Side * 355, 1), FVector(26, 99, 2), StreetPaint);
+			const FColor Paint = Index % 3 == 0 ? FadedPaint : StreetPaint;
+			Prop(City, EShape::Box, FVector(Side * 355, Index * 43 - 195, 0.7), FVector(99, 26, 1), Paint);
+			Prop(City, EShape::Box, FVector(Index * 43 - 195, Side * 355, 0.7), FVector(26, 99, 1), Paint);
 		}
 	}
 	// A lattice tower anchors the Tokyo skyline across camera cuts.
@@ -257,7 +329,17 @@ void ADirectorsCutStage::BuildCity()
 		Shape(Building, EShape::Box, FVector(0, 0, Height / 2), FVector(136, 180, Height), Walls[Index % 4]);
 		AddFacade(Building, FVector::ZeroVector, 136, 180, Height, Index % 3, true);
 		AddRoof(Building, FVector::ZeroVector, 136, 180, Height, Index % 3);
-		Buildings.Add({Building, Location, Time, Height});
+		USceneComponent* Rubble = Group(City, Location);
+		for (int32 Chunk = 0; Chunk < 13; ++Chunk)
+		{
+			const double Size = StreetRandom.FRandRange(11, 36);
+			Prop(Rubble, EShape::Box,
+				FVector(StreetRandom.FRandRange(-65, 175), Side * StreetRandom.FRandRange(-115, 165), Size * 0.22),
+				FVector(Size * 1.35, Size, Size * 0.60), RubbleStone[Chunk % UE_ARRAY_COUNT(RubbleStone)],
+				FRotator(StreetRandom.FRandRange(-17, 17), StreetRandom.FRandRange(0, 180), 13));
+		}
+		Rubble->SetVisibility(false, true);
+		Buildings.Add({Building, Rubble, Location, Time, Height});
 	}
 	for (int32 Index = 0; Index < UE_ARRAY_COUNT(Dust); ++Index)
 	{
@@ -420,6 +502,11 @@ void ADirectorsCutStage::PoseDestruction(float Time)
 	for (const FBuilding& Building : Buildings)
 	{
 		const float Collapse = Smooth((Time - Building.ImpactTime) / 0.85f);
+		const bool bRubbleVisible = Collapse > 0.25f;
+		if (Building.Rubble->IsVisible() != bRubbleVisible)
+		{
+			Building.Rubble->SetVisibility(bRubbleVisible, true);
+		}
 		const double Side = FMath::Sign(Building.Position.Y);
 		Building.Root->SetRelativeLocationAndRotation(Building.Position + FVector(86 * Collapse, Side * 145 * Collapse,
 			-Building.Height * 0.12 * Collapse), FRotator(-31 * Collapse, Side * 23 * Collapse, Side * 78 * Collapse));
