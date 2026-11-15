@@ -114,8 +114,8 @@ void ADirectorsCutHUD::DrawTitle()
 	Box(0, 0, Width, 10 * UI, Void);
 	Box(0, Height - 10 * UI, Width, 10 * UI, Void);
 	Box(Left, Top, 46 * UI, 3 * UI, Amber);
-	Text(TEXT("DIRECTOR'S"), Left - 4 * UI, Top + 20 * UI, 76, Paper, true);
-	Text(TEXT("CUT"), Left - 5 * UI, Top + 106 * UI, 125, Paper, true);
+	Text(TEXT("GODZILLA"), Left - 4 * UI, Top + 20 * UI, 76, Paper, true);
+	Text(TEXT("STEVEN"), Left - 5 * UI, Top + 106 * UI, 100, Paper, true);
 	Text(TEXT("Slice the film. Survive the take."), Left, Top + 270 * UI, 21, Paper);
 	Text(TEXT("Complete the reel to screen the full movie."), Left, Top + 308 * UI, 16, Muted);
 	Button(TEXT("Start Take"), Left, Top + 370 * UI, 204 * UI);
@@ -128,7 +128,7 @@ void ADirectorsCutHUD::DrawArena(const ADirectorsCutGameMode& Game)
 	Box(0, 0, Width, 63 * UI, FColor(12, 17, 20, 230));
 	Box(0, 63 * UI, Width, 1 * UI, Edge);
 	Box(26 * UI, 18 * UI, 5 * UI, 28 * UI, Amber);
-	Text(TEXT("DIRECTOR'S CUT"), 43 * UI, 17 * UI, 23, Paper, true);
+	Text(TEXT("GODZILLA STEVEN"), 43 * UI, 17 * UI, 23, Paper, true);
 	Text(TEXT("WASD  MOVE   /   CLICK  SLICE   /   SHIFT  DODGE"), Width * 0.53f, 24 * UI, 12, Muted, false, 0.5f, true);
 	Text(TEXT("DODGE"), Width - 130 * UI, 14 * UI, 10, Muted, false, 0, true);
 	Box(Width - 130 * UI, 37 * UI, 102 * UI, 5 * UI, Edge);
