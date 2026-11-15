@@ -165,7 +165,7 @@ void ADirectorsCutGameMode::SetPhase(EPhase NewPhase)
 	if (ADirectorsCutController* Controller = Cast<ADirectorsCutController>(GetWorld()->GetFirstPlayerController()))
 	{
 		Controller->SetCursorVisible(NewPhase == EPhase::Title || NewPhase == EPhase::Combat ||
-			NewPhase == EPhase::GetPaid || NewPhase == EPhase::Reception);
+			NewPhase == EPhase::ReelReady || NewPhase == EPhase::GetPaid || NewPhase == EPhase::Reception);
 	}
 }
 
@@ -209,6 +209,11 @@ void ADirectorsCutGameMode::Confirm()
 			break;
 		}
 		StartTake();
+		break;
+	case EPhase::ReelReady:
+		SetPhase(EPhase::Screening);
+		Stage->ShowFilm(*Camera, INDEX_NONE, 0.0f);
+		PlayCue(ECue::Projector);
 		break;
 	case EPhase::Reception:
 		StartTake();
@@ -306,9 +311,7 @@ void ADirectorsCutGameMode::Tick(float DeltaSeconds)
 		UpdateArena();
 		if (PhaseTime >= (Won() ? 1.15f : 1.55f))
 		{
-			SetPhase(EPhase::Screening);
-			Stage->ShowFilm(*Camera, INDEX_NONE, 0.0f);
-			PlayCue(ECue::Projector);
+			SetPhase(EPhase::ReelReady);
 		}
 		break;
 	case EPhase::Screening:

@@ -15,7 +15,7 @@ namespace DirectorsCut
 	constexpr float PayoutDuration = 4.2f;
 	constexpr float PayoutStart = 0.55f;
 	constexpr float BagInterval = 0.46f;
-	enum class EPhase : uint8 { Title, TitleStart, Combat, Wrap, Screening, GetPaid, Payout, Reception };
+	enum class EPhase : uint8 { Title, TitleStart, Combat, Wrap, ReelReady, Screening, GetPaid, Payout, Reception };
 	enum class EEnemyMove : uint8 { Waiting, Chase, Windup, Lunge, Recover, Cut };
 	enum class ECue : uint8 { Swing, Splice, Dash, Warning, Impact, Projector, Aircraft, Cash, Count };
 

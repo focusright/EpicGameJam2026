@@ -78,6 +78,7 @@ void ADirectorsCutHUD::DrawHUD()
 		break;
 	case EPhase::Combat:
 	case EPhase::Wrap:
+	case EPhase::ReelReady:
 		DrawArena(*Game);
 		break;
 	case EPhase::Screening:
@@ -149,14 +150,21 @@ void ADirectorsCutHUD::DrawArena(const ADirectorsCutGameMode& Game)
 	Box(Width - 130 * UI, 37 * UI, 102 * UI, 5 * UI, Edge);
 	Box(Width - 130 * UI, 37 * UI, 102 * UI * Game.GetDashCharge(), 5 * UI, Amber);
 	DrawReel(Game);
-	if (Game.GetPhase() == EPhase::Wrap)
+	// Stack above the film strip: banner, then Play Reel, then the REEL count label.
+	const float ButtonY = Height * 0.90f - 98 * UI;
+	const float BannerY = ButtonY - 78 * UI;
+	if (Game.GetPhase() == EPhase::Wrap || Game.GetPhase() == EPhase::ReelReady)
 	{
 		const bool bWon = Game.Won();
 		const float W = 384 * UI;
-		Box((Width - W) / 2, Height * 0.135f, W, 58 * UI, FColor(12, 17, 20, 236));
-		Box((Width - W) / 2, Height * 0.135f, 5 * UI, 58 * UI, bWon ? Amber : Red);
-		Text(bWon ? TEXT("REEL COMPLETE") : TEXT("DIRECTOR CUT"), Width / 2, Height * 0.135f + 12 * UI,
+		Box((Width - W) / 2, BannerY, W, 58 * UI, FColor(12, 17, 20, 236));
+		Box((Width - W) / 2, BannerY, 5 * UI, 58 * UI, bWon ? Amber : Red);
+		Text(bWon ? TEXT("REEL COMPLETE") : TEXT("DIRECTOR CUT"), Width / 2, BannerY + 12 * UI,
 			24, Paper, true, 0.5f);
+	}
+	if (Game.GetPhase() == EPhase::ReelReady)
+	{
+		Button(TEXT("Play Reel"), Width / 2 - 110 * UI, ButtonY, 220 * UI);
 	}
 }
 
