@@ -8,6 +8,11 @@
 			"Name": "EpicGameJam2026",
 			"Type": "Runtime",
 			"LoadingPhase": "Default"
+		},
+		{
+			"Name": "UE59_TPS_CPP",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
 		}
 	],
 	"Plugins": [

@@ -36,6 +36,12 @@
 			]
 		}
 	],
+	"Plugins": [
+		{
+			"Name": "Interchange",
+			"Enabled": true
+		}
+	],
 	"Modules": [
 		{
 			"Name": "Tripo3DUEBridge",
