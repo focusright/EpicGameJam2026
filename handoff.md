@@ -1,39 +1,59 @@
-# Godzilla Steven handoff for Cursor
+# Godzilla Steven handoff for Codex
 
 Project: `G:/gamejams/EpicGameJam2026/EpicGameJam2026.uproject` (Unreal Engine 5.9).
 
-## Current request and blocker
+## What just happened (Cursor session)
 
-The opening screen has the title and button on the left and Steven in the scene on the right. The user wants Steven centered in that right-hand visible area. Preserve the earlier requirements: show his face from a low, close camera; keep his full body and the entire sword animation in frame; do not introduce a camera snap when Start Editing is clicked.
+Packaged Windows Shipping builds were broken in playable ways even after cook succeeded. Root causes and fixes:
 
-The latest user screenshot is `C:/Users/rocke/AppData/Local/Temp/codex-clipboard-27587611-9561-47a4-9a3d-277494f5f0c2.png`. It shows Steven too far left in the scene area. At 1920 px wide, the scene begins around x=900 and its center is around x=1410.
+1. **Cook failure (Landmass)** — `bSkipEditorContent=True` made cook fail because Landmass soft-refs editor materials (`BrushBounds` → `TilingAA*`, `M_BrushSprite_01` → `S_Terrain`). Fix: set `bSkipEditorContent=False` in `Config/DefaultGame.ini`, disable `Landmass` / `Water` / `Buoyancy` / `Volumetrics` in `.uproject`, and keep `Config/DefaultEditor.ini` with `CookContentMissingSeverity=Warning`. Do **not** add `DirectoriesToNeverCook=(Path="/Landmass")` while Landmass still mounts — that double-registers `/Landmass/` and ensures-fail the cook.
 
-**The camera framing is unfinished.** The current code centers Steven's opening pose, but the sword tip runs off the right edge near 1.0 second into the slash. Do not report the framing as complete until the full animation has been checked.
+2. **Packaged game empty + dead input** — Title UI drew, but Steven/arena were missing, cursor hidden, Start Editing hover worked, click/Enter did nothing. Cause: `ADirectorsCutStage::Build()` returned false because `/Engine/EngineMaterials/EmissiveTexturedMaterial` was **not cooked**. BeginPlay then `SetActorTickEnabled(false)` and never called `SetPhase(Title)`, so cursor never enabled; `Confirm()` early-out on `!IsActorTickEnabled()`. Fix in `DirectorsCutStage.cpp`: load `EmissiveMeshMaterial` (is in the pak) and fall back to `BasicShapeMaterial`. Also cook `/Engine/EngineMaterials`. Cursor/input: show cursor early in BeginPlay; `DefaultInput.ini` now uses legacy `PlayerInput`/`InputComponent`, `bCaptureMouseOnLaunch=False`, `CaptureDuringMouseDown`, `DoNotLock`.
 
-Current values in `Source/EpicGameJam2026/DirectorsCutStage.cpp`:
+3. **Earlier compile packaging fail** — `MipGenSettings` is not on `UTexture2D` in 5.9; removed from HUD grain texture setup in `DirectorsCutHUD.cpp`.
 
-- Title Steven relative transform: yaw `110`, location `(-90, -73, -87)`, scale `2.0`. I reverted an experimental yaw of `135`: it made the face more of a side profile and still clipped the sword.
-- Title camera position: `ArenaOrigin + (-380, -410 + 30 * sin(Time * 0.35), 145)`.
-- Title camera aim: `ArenaOrigin + (6, -228, 110)` when the Steven mesh exists; FOV `88`.
-- This puts Steven's body near the center of the right-hand area at the opening pose. The sword is clipped at the right edge around 1.0 second into the animation. The latest matching video is `Saved/Recordings/Viewport_20261115-061226_DTUZPCBUUELVPM2WV0R9XH308.mp4` (yaw 110, FOV 88). The frame extracted at 1.0 second is `Saved/Recordings/center_88_10.png`.
+Shipping `EpicGameJam2026` Win64 compile succeeded after these changes. User needs to **repackage** and verify the staged build shows Steven, cursor, and Start Editing / Enter.
 
-A prior framing kept the entire swing in view but left Steven too far left: same camera position, aim `(-55, -150, 110)`, FOV `66`. The matching video is `Saved/Recordings/Viewport_20261115-060240_6NVKXGDQ3HMNGWEBH1MINUK9D.mp4`. Another FOV 74 attempt moved him partway toward center but left him short of the panel center; its swing video is `Saved/Recordings/Viewport_20261115-061013_C2UVBDX84WKD8VNHZI2EAP9XM.mp4`.
+## Current game features (relevant)
 
-Possible next approach: find a composition between these two extremes, or make a gentle, continuous camera adjustment during the swing while keeping the opening pose centered. The user already rejected a sudden camera shift on click. Do not change the authored animation just to solve framing. Check the raised sword at about 0.6 s, its far right reach at about 1.0 s, and the boots and head throughout. Also check clicks after the title camera has drifted to both ends of its `sin` movement.
+- C++ directors-cut flow in `DirectorsCutGameMode` / `DirectorsCutStage` / `DirectorsCutHUD` / `DirectorsCutFilm`.
+- Title → combat → reel ready → screening → payout. GlobalDefaultGameMode is `DirectorsCutGameMode`; map `L_Default`.
+- **P** pauses (`SetGamePaused` + `bExecuteWhenPaused`); PAUSED HUD overlay.
+- Screening: dim DirectionalLight ×0.5; camera PP vignette/fringe + film grain intensity; HUD also draws a **reliable noise overlay** during Screening because native UE film grain is flaky (needs streamed grain texture / scalability).
+- Arena dressing: film reel props, dark teal floor `#102223` with large checker + finer center-cross checker; benches without emissive/point lights (user reverted lighting experiments — do not reintroduce heavy lighting without ask).
+- Title Steven: `/Game/Player/Mesh/1/Steven1`, pose + slash anims, machete on `hand_rSocket`. Title camera off-center for left UI panel.
 
-## Existing title implementation
+## Files touched recently
 
-- Opening Steven mesh: `/Game/Player/Mesh/1/Steven1`.
-- Opening pose: `/Game/Player/Animation/mixamo/AS_Steven1_Slash_Pose`.
-- Start slash: `/Game/Player/Animation/Stable_Sword_Outward_Slash_Anim` (2.0333 s, Steven1 skeleton). It begins and ends in the opening pose.
-- Machete: `/Game/TripoModels/long_blade_machete_3d_model/long_blade_machete_3d_model`, attached to Steven's `hand_rSocket`.
-- Steven's animation sits roughly 43 cm above its root, so the title mesh has a `-87` Z offset at scale 2.0 to place his feet on the floor.
-- `DirectorsCutHUD.cpp` labels the button **Start Editing**. Clicking it or pressing Enter calls `Confirm()` in `DirectorsCutGameMode.cpp`. The `TitleStart` phase plays the slash, waits for its duration plus 0.1 s, then enters combat. The title camera has a separate `TitleCameraTime` that continues across the click; this removed the previous camera snap. `Config/DefaultGame.ini` cooks `/Game/Player/Animation` for packaged builds.
+| File | Why |
+|------|-----|
+| `Source/EpicGameJam2026/DirectorsCutStage.cpp` | Emissive material fallback so packaged Build() succeeds |
+| `Source/EpicGameJam2026/DirectorsCutGameMode.cpp` | Reel PP + sun dim; early cursor; Confirm gate; film grain texture bind attempt |
+| `Source/EpicGameJam2026/DirectorsCutHUD.cpp/.h` | Screening film-grain HUD overlay (transient noise texture) |
+| `Config/DefaultGame.ini` | Packaging/cook dirs; `bSkipEditorContent=False`; AlwaysCook EngineMaterials |
+| `Config/DefaultEditor.ini` | Cook missing-content severity Warning |
+| `Config/DefaultInput.ini` | Cursor-friendly capture + legacy input classes |
+| `EpicGameJam2026.uproject` | Disable Landmass/Water/Buoyancy/Volumetrics |
 
-## Files and validation
+Many of these may still be **uncommitted**. Check `git status` before committing.
 
-The source and config changes for the title pose, button, start animation, and camera are currently **uncommitted**. Check `git status --short` before editing. The yaw reversion from 135 to 110 passed Live Coding, so the open editor matches the current source. Earlier iterations passed a Win64 Development build; the camera framing still needs its own final build after the clipping is solved.
+## Open / verify next
 
-Unreal MCP was available in this session through the local editor. We used `LiveCodingToolset.LiveCodingToolset.CompileLiveCoding`, `EditorToolset.EditorAppToolset.StartPIE/StopPIE`, `InputToolset.InputToolset.ApplyInput` with Enter, and `SceneCaptureToolset.SceneCaptureToolset.CaptureGameViewport` or `StartViewportRecording/StopViewportRecording`. If Cursor lacks MCP, use the open Unreal editor and Play In Editor manually. The recorded videos under `Saved/Recordings` are local test artifacts, not project assets.
+1. **Repackage Windows Shipping** and run `Saved/StagedBuilds/Windows/EpicGameJam2026.exe` (or project Packaged build). Confirm: Steven visible on title, mouse cursor visible, Start Editing click + Enter start the slash → combat.
+2. If Build still fails in package, check shipping log for `Director's Cut could not load the required stage assets` — Now logs which of Godzilla/Pigment/Light/Shapes failed.
+3. Film grain: HUD overlay should be obvious during Godzilla reel; native camera PP grain is secondary. Do not spend time on CameraActor Details Blend Weight during REEL COMPLETE — effects are cleared when leaving Screening.
+4. Title camera framing (older Codex task): Steven centered in the **right** visible panel without clipping the sword mid-slash, no snap on Start Editing. Values and recordings notes from the previous handoff may still apply if framing was left unfinished — re-check current `SetArenaCamera` / title transform in `DirectorsCutStage.cpp` against PIE before changing.
 
-The older `LS_Steven_MacheteSlash` Control Rig workflow is separate from this opening-screen camera task. The user has supplied the finished slash asset above; preserve it.
+## Packaging notes
+
+- Cook-only verify:  
+  `RunUAT.bat BuildCookRun -project=... -platform=Win64 -clientconfig=Shipping -cook -skipstage -skipbuild -nocompileeditor`
+- Live Coding blocks command-line `Build.bat` while the editor has Live Coding active — Ctrl+Alt+F11 or close editor.
+- IoStore pak list: `UnrealPak.exe ...\EpicGameJam2026-Windows.utoc -List` (`.pak` alone is less useful with IoStore).
+- Known-good cooked assets include Godzilla, Steven1, BasicShapes, BasicShapeMaterial, EmissiveMeshMaterial, FilmReel props, Tripo machete. `EmissiveTexturedMaterial` was missing from the broken package.
+
+## Do not
+
+- Reintroduce lighting overrides / Lumen CVar experiments / bench emissive lights unless the user asks.
+- Assume CameraActor Post Process Blend Weight alone enables film grain (needs intensity overrides + grain texture; HUD overlay is the reliable path).
+- Flip `bSkipEditorContent` back to True without solving Landmass refs — cook will fail again.
