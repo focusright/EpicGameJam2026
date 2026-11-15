@@ -17,6 +17,8 @@
 #include "Kismet/KismetSystemLibrary.h"
 #include "Misc/CommandLine.h"
 #include "Misc/Parse.h"
+#include "Sound/SoundBase.h"
+#include "Sound/SoundWave.h"
 #include "Sound/SoundWaveProcedural.h"
 
 namespace DirectorsCut
@@ -42,6 +44,10 @@ namespace
 	constexpr float LungeDuration = 0.27f;
 	constexpr float CutDuration = 0.55f;
 	constexpr int32 SampleRate = 24000;
+	constexpr float TornFleshStartSeconds = 23.984f;
+	constexpr float TornFleshVolume = 0.85f;
+	constexpr float ReelMusicFadeOutSeconds = 2.0f;
+	const TCHAR* TornFleshPath = TEXT("/Game/audio/Karl_Casey_-_Torn_Flesh.Karl_Casey_-_Torn_Flesh");
 
 	FVector2D ClampToArena(FVector2D Point, float Margin = 0.0f)
 	{
@@ -392,11 +398,13 @@ void ADirectorsCutGameMode::Confirm()
 		SetPhase(EPhase::Screening);
 		Stage->ShowFilm(*Camera, INDEX_NONE, 0.0f);
 		PlayCue(ECue::Projector);
+		StartReelMusic();
 		break;
 	case EPhase::Reception:
 		StartTake();
 		break;
 	case EPhase::GetPaid:
+		StopReelMusic();
 		SetPhase(EPhase::Payout);
 		UpdatePayout();
 		break;
@@ -494,6 +502,9 @@ void ADirectorsCutGameMode::Tick(float DeltaSeconds)
 		break;
 	case EPhase::Screening:
 		UpdateScreening(DeltaSeconds);
+		break;
+	case EPhase::GetPaid:
+		UpdateReelMusicFade(DeltaSeconds);
 		break;
 	case EPhase::Payout:
 		UpdatePayout();
@@ -671,6 +682,7 @@ void ADirectorsCutGameMode::UpdateScreening(float DeltaSeconds)
 		if (FilmShot == ReelSize)
 		{
 			SetPhase(EPhase::GetPaid);
+			BeginReelMusicFadeOut();
 			return;
 		}
 		bFilmActionPlayed = false;
@@ -715,6 +727,94 @@ void ADirectorsCutGameMode::PlayCue(ECue Cue)
 		{
 			Voice->StopDelayed(Wave->Duration + 0.07f);
 		}
+	}
+}
+
+void ADirectorsCutGameMode::StartReelMusic()
+{
+	StopReelMusic();
+	if (!TornFlesh)
+	{
+		TornFlesh = LoadObject<USoundBase>(nullptr, TornFleshPath);
+	}
+	if (!TornFlesh)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Director's Cut could not load reel music %s"), TornFleshPath);
+		return;
+	}
+	if (USoundWave* Wave = Cast<USoundWave>(TornFlesh))
+	{
+		// Manual restart keeps every loop at TornFleshStartSeconds instead of 0.
+		Wave->bLooping = false;
+	}
+	ReelMusicVolume = TornFleshVolume;
+	ReelMusic = UGameplayStatics::SpawnSound2D(this, TornFlesh, ReelMusicVolume, 1.0f, TornFleshStartSeconds,
+		nullptr, false, false);
+	if (ReelMusic)
+	{
+		ReelMusic->bAutoDestroy = false;
+		ReelMusic->OnAudioFinished.AddDynamic(this, &ADirectorsCutGameMode::OnReelMusicFinished);
+	}
+}
+
+void ADirectorsCutGameMode::StopReelMusic()
+{
+	bReelMusicFading = false;
+	ReelMusicFadeTime = 0.0f;
+	if (ReelMusic)
+	{
+		ReelMusic->OnAudioFinished.RemoveDynamic(this, &ADirectorsCutGameMode::OnReelMusicFinished);
+		ReelMusic->Stop();
+		ReelMusic = nullptr;
+	}
+}
+
+void ADirectorsCutGameMode::BeginReelMusicFadeOut()
+{
+	if (!ReelMusic)
+	{
+		return;
+	}
+	// Stop looping so a natural end during the fade does not restart at full volume.
+	ReelMusic->OnAudioFinished.RemoveDynamic(this, &ADirectorsCutGameMode::OnReelMusicFinished);
+	ReelMusicVolume = ReelMusic->VolumeMultiplier;
+	bReelMusicFading = true;
+	ReelMusicFadeTime = 0.0f;
+}
+
+void ADirectorsCutGameMode::UpdateReelMusicFade(float DeltaSeconds)
+{
+	if (!bReelMusicFading || !ReelMusic)
+	{
+		return;
+	}
+	ReelMusicFadeTime += DeltaSeconds;
+	const float Alpha = FMath::Clamp(ReelMusicFadeTime / ReelMusicFadeOutSeconds, 0.0f, 1.0f);
+	ReelMusic->SetVolumeMultiplier(ReelMusicVolume * (1.0f - Alpha));
+	if (Alpha >= 1.0f)
+	{
+		StopReelMusic();
+	}
+}
+
+void ADirectorsCutGameMode::OnReelMusicFinished()
+{
+	if (Phase != EPhase::Screening || bReelMusicFading)
+	{
+		return;
+	}
+	if (!TornFlesh)
+	{
+		return;
+	}
+	if (ReelMusic)
+	{
+		ReelMusic->SetVolumeMultiplier(ReelMusicVolume);
+		ReelMusic->Play(TornFleshStartSeconds);
+	}
+	else
+	{
+		StartReelMusic();
 	}
 }
 

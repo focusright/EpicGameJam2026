@@ -7,6 +7,8 @@
 
 class ACameraActor;
 class ADirectorsCutStage;
+class UAudioComponent;
+class USoundBase;
 
 namespace DirectorsCut
 {
@@ -98,6 +100,12 @@ private:
 	UPROPERTY()
 	TObjectPtr<ACameraActor> Camera;
 
+	UPROPERTY()
+	TObjectPtr<USoundBase> TornFlesh;
+
+	UPROPERTY()
+	TObjectPtr<UAudioComponent> ReelMusic;
+
 	TArray<TArray<int16>> Sounds;
 
 	DirectorsCut::EPhase Phase = DirectorsCut::EPhase::Title;
@@ -135,4 +143,15 @@ private:
 	void UpdatePayout();
 	void PlayCue(DirectorsCut::ECue Cue);
 	void BuildSounds();
+	void StartReelMusic();
+	void StopReelMusic();
+	void BeginReelMusicFadeOut();
+	void UpdateReelMusicFade(float DeltaSeconds);
+
+	UFUNCTION()
+	void OnReelMusicFinished();
+
+	bool bReelMusicFading = false;
+	float ReelMusicFadeTime = 0.0f;
+	float ReelMusicVolume = 0.85f;
 };
