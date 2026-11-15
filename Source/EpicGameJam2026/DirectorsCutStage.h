@@ -136,7 +136,7 @@ private:
 	void BuildArenaDressing();
 	void BuildDirector();
 	void BuildTitleDirector();
-	void BuildEnemy(int32 Index);
+	void BuildEnemy(int32 Index, UStaticMesh* FilmPlane, UMaterialInterface* FilmTint);
 	void BuildCity();
 	void BuildGodzilla();
 	void BuildAircraft(int32 Index, bool bHelicopter);
